@@ -27,6 +27,12 @@ from ai.knowledge_graph import KnowledgeGraph, KnowledgeGraphBuilder
 from ai.rag_fusion import RAGFusion
 from ai.model_router import ModelRouter, ModelTier
 from ai.safety_checker import check_safety, SafetyCheckResult, DISCLAIMER
+from ai.multi_model import MultiModelCollaborator, ModelHealthMonitor
+from ai.cache import MultiLevelCache, LRUCache, CacheKeyBuilder, RateLimiter
+from ai.evaluation.evaluator import AutoEvaluator, EvalResult, EvalCase
+from ai.evaluation.ab_testing import ABTestManager, Experiment
+from ai.prompt_manager.version_control import PromptVersionControl, PromptVersion
+from ai.prompt_manager.registry import PromptRegistry, PromptTemplate
 
 __all__ = [
     # 客户端
@@ -60,4 +66,23 @@ __all__ = [
     "LLM_CONFIGS",
     "DEFAULT_LLM",
     "get_default_config",
+    # 多模型协同
+    "MultiModelCollaborator",
+    "ModelHealthMonitor",
+    # 缓存
+    "MultiLevelCache",
+    "LRUCache",
+    "CacheKeyBuilder",
+    "RateLimiter",
+    # 评估
+    "AutoEvaluator",
+    "EvalResult",
+    "EvalCase",
+    "ABTestManager",
+    "Experiment",
+    # Prompt管理
+    "PromptVersionControl",
+    "PromptVersion",
+    "PromptRegistry",
+    "PromptTemplate",
 ]

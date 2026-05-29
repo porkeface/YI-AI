@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.agent import router as agent_router
 from api.auth import router as auth_router
+from api.cache_middleware import CacheMiddleware, RateLimitMiddleware
 from api.divination import router as divination_router
 from api.graph import router as graph_router
 from api.health import router as health_router
@@ -25,7 +26,9 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS配置 - 允许Nuxt前端跨域访问
+# 中间件（按注册的逆序执行）
+app.add_middleware(CacheMiddleware)
+app.add_middleware(RateLimitMiddleware, max_requests=120, window_seconds=60)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:3001"],

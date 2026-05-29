@@ -1,6 +1,11 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-01',
   devtools: { enabled: true },
+  components: [
+    { path: '~/components/ui', pathPrefix: false },
+    { path: '~/components/hexagram', pathPrefix: false },
+    { path: '~/components', pathPrefix: false },
+  ],
   modules: [
     '@nuxtjs/tailwindcss',
     '@nuxtjs/color-mode',

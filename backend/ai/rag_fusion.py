@@ -20,6 +20,8 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from typing import Any
+
 from ai.knowledge_base import KnowledgeBase
 from ai.knowledge_graph import KnowledgeGraph
 from foundation.types import Hexagram, RuleAnalysisResult
@@ -57,15 +59,24 @@ class RAGFusion:
         self,
         knowledge_base: KnowledgeBase | None = None,
         knowledge_graph: KnowledgeGraph | None = None,
+        vector_backend: Any | None = None,
+        embedding_service: Any | None = None,
     ) -> None:
         """初始化RAG融合检索
 
         Args:
             knowledge_base: 易经知识库（向量检索的MVP替代）
             knowledge_graph: 知识图谱
+            vector_backend: 向量检索后端（可选，如 QdrantVectorBackend）
+            embedding_service: Embedding 服务（可选，如 EmbeddingService）
         """
-        self.knowledge_base = knowledge_base or KnowledgeBase()
+        self.knowledge_base = knowledge_base or KnowledgeBase(
+            vector_backend=vector_backend,
+            embedding_service=embedding_service,
+        )
         self.knowledge_graph = knowledge_graph or KnowledgeGraph()
+        self._vector_backend = vector_backend
+        self._embedding_service = embedding_service
 
     def retrieve(
         self,
@@ -125,7 +136,7 @@ class RAGFusion:
     def _vector_search(
         self, hexagram_name: str, question_type: str
     ) -> list[RetrievalResult]:
-        """向量检索（MVP用关键词匹配替代）
+        """向量检索（有向量后端时用语义检索，否则降级到关键词匹配）
 
         Args:
             hexagram_name: 卦名
@@ -134,10 +145,28 @@ class RAGFusion:
         Returns:
             检索结果列表
         """
+        if self._vector_backend and self._embedding_service:
+            try:
+                query = f"{hexagram_name} {question_type}"
+                vector = self._embedding_service.embed(query)
+                results = self._vector_backend.search(vector, top_k=5)
+                return [
+                    RetrievalResult(
+                        content=r.get("content", ""),
+                        source="vector",
+                        score=r.get("score", 0.0),
+                        rank=i,
+                    )
+                    for i, r in enumerate(results)
+                    if r.get("content")
+                ]
+            except Exception as e:
+                logger.warning(f"Vector search failed, falling back: {e}")
+
+        # 降级到关键词匹配
         entries = self.knowledge_base.retrieve(
             hexagram_name, question_type, max_entries=5
         )
-
         return [
             RetrievalResult(
                 content=entry,

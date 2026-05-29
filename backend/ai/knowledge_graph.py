@@ -14,6 +14,7 @@ MVP阶段使用内存图结构，接口设计兼容Neo4j迁移。
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Protocol
@@ -119,6 +120,8 @@ class GraphBackend(Protocol):
     def find_path(
         self, start_id: str, end_id: str, max_depth: int = 3
     ) -> tuple[tuple[str, ...], ...]: ...
+    def is_available(self) -> bool: ...
+    def close(self) -> None: ...
 
 
 # ============================================================================
@@ -221,6 +224,14 @@ class InMemoryGraph:
                     queue.append((other, path + [other]))
 
         return tuple(paths)
+
+    def is_available(self) -> bool:
+        """内存图始终可用"""
+        return True
+
+    def close(self) -> None:
+        """内存图无需清理"""
+        pass
 
     @property
     def node_count(self) -> int:
@@ -491,10 +502,39 @@ class KnowledgeGraph:
     """知识图谱查询接口
 
     提供高级查询方法，供RAG和AI模块使用。
+    支持后端切换：有 Neo4j 时用 Neo4j，否则用内存图。
     """
 
-    def __init__(self, graph: InMemoryGraph | None = None) -> None:
-        self._graph = graph or KnowledgeGraphBuilder.build()
+    def __init__(self, backend: GraphBackend | None = None) -> None:
+        """初始化知识图谱
+
+        Args:
+            backend: 图存储后端（可选）。未提供时自动尝试 Neo4j，不可用则用内存图。
+        """
+        if backend is not None:
+            self._backend = backend
+        else:
+            # 尝试使用 Neo4j
+            neo4j_backend = None
+            if os.environ.get("NEO4J_URI"):
+                try:
+                    from ai.adapters.neo4j_adapter import Neo4jGraphBackend
+
+                    nb = Neo4jGraphBackend()
+                    if nb.is_available():
+                        neo4j_backend = nb
+                        logger.info("neo4j_backend_enabled")
+                except Exception as e:
+                    logger.debug(f"Neo4j not available, using in-memory graph: {e}")
+
+            self._backend = neo4j_backend or InMemoryGraph()
+
+        # 如果使用内存后端且为空，自动构建
+        if isinstance(self._backend, InMemoryGraph) and self._backend.node_count == 0:
+            self._backend = KnowledgeGraphBuilder.build()
+
+        # 兼容属性：内部用 _graph 访问
+        self._graph = self._backend
 
     def get_hexagram_context(self, hexagram_name: str) -> str:
         """获取卦的完整图谱上下文
@@ -608,36 +648,33 @@ class KnowledgeGraph:
 
         return "\n".join(parts)
 
-    def search_by_keyword(self, keyword: str) -> list[GraphNode]:
-        """按关键词搜索节点
+    def search_by_keyword(self, keyword: str) -> tuple[GraphNode, ...]:
+        """按关键词搜索节点名称
 
         Args:
             keyword: 搜索关键词
 
         Returns:
-            匹配的节点列表
+            匹配的节点元组
         """
         results: list[GraphNode] = []
-        for node in self._graph._nodes.values():
-            if keyword in node.name:
-                results.append(node)
-                continue
-            for prop_value in node.properties.values():
-                if keyword in prop_value:
+        for node_type in NodeType:
+            for node in self._graph.query_by_type(node_type):
+                if keyword in node.name or keyword in node.id:
                     results.append(node)
-                    break
-        return results[:10]
+                    if len(results) >= 10:
+                        return tuple(results)
+        return tuple(results)
 
     @property
     def stats(self) -> dict[str, int]:
         """图谱统计信息"""
-        type_counts: dict[str, int] = {}
-        for node in self._graph._nodes.values():
-            type_counts[node.node_type.value] = (
-                type_counts.get(node.node_type.value, 0) + 1
-            )
+        node_counts: dict[str, int] = {}
+        for node_type in NodeType:
+            nodes = self._graph.query_by_type(node_type)
+            node_counts[node_type.value] = len(nodes)
         return {
-            "total_nodes": self._graph.node_count,
-            "total_edges": self._graph.edge_count,
-            **type_counts,
+            "total_nodes": sum(node_counts.values()),
+            "total_edges": len(self._graph.get_edges()),
+            **node_counts,
         }

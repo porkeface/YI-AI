@@ -13,9 +13,11 @@ from typing import Callable, Any
 from ai.agent.state import AgentState, AgentConfig
 from ai.agent.tools import AgentTools, ToolResult
 from ai.knowledge_base import KnowledgeBase
+from ai.knowledge_graph import KnowledgeGraph
 from ai.llm_client import LLMClient, LLMConfig, LLMError
 from ai.memory.engine import MemoryEngine
 from ai.memory.types import MemoryType
+from ai.rag_fusion import RAGFusion
 
 logger = logging.getLogger(__name__)
 
@@ -218,8 +220,34 @@ _HEXAGRAM_NAMES_SORTED = sorted(
     reverse=True,
 )
 
-# 模块级单例
+# 模块级单例（延迟初始化）
 _kb = KnowledgeBase()
+_rag: RAGFusion | None = None
+
+
+def _get_rag() -> RAGFusion:
+    """获取 RAGFusion 单例（延迟初始化，尝试接入向量后端）"""
+    global _rag
+    if _rag is None:
+        vector_backend = None
+        embedding_service = None
+        try:
+            from ai.adapters.qdrant_adapter import QdrantVectorBackend
+            from ai.embedding import get_embedding_service
+
+            vb = QdrantVectorBackend()
+            if vb.is_available():
+                vector_backend = vb
+                embedding_service = get_embedding_service()
+                logger.info("qdrant_vector_backend_enabled")
+        except Exception as e:
+            logger.debug(f"Vector backend not available: {e}")
+
+        _rag = RAGFusion(
+            vector_backend=vector_backend,
+            embedding_service=embedding_service,
+        )
+    return _rag
 
 
 def _classify_intent(state: AgentState) -> dict:
@@ -286,9 +314,10 @@ def _rule_analyze(state: AgentState) -> dict:
 
 
 def _rag_retrieve(state: AgentState) -> dict:
-    """RAG检索节点
+    """RAG检索节点 - 使用公共API进行检索
 
-    使用 KnowledgeBase 进行关键词检索，获取相关易经原文。
+    通过知识库检索和知识图谱获取上下文，
+    不调用任何私有方法。
     """
     hexagram_data = state.get("hexagram_data")
     user_query = state.get("user_query", "")
@@ -313,11 +342,28 @@ def _rag_retrieve(state: AgentState) -> dict:
             break
 
     try:
-        entries = _kb.retrieve(hexagram_name, question_type, max_entries=5)
-        return {"rag_context": entries if entries else None}
+        rag = _get_rag()
+
+        # 使用知识库公共检索（内部会自动选择向量或关键词）
+        entries = rag.knowledge_base.retrieve(hexagram_name, question_type, max_entries=5)
+
+        # 获取图谱上下文
+        graph_context = rag.knowledge_graph.get_hexagram_context(hexagram_name)
+
+        results = list(entries)
+        if graph_context:
+            results.insert(0, f"【卦象关系】{graph_context}")
+
+        return {"rag_context": results if results else None}
     except Exception as e:
         logger.error(f"RAG retrieval failed: {e}")
-        return {"rag_context": None}
+        # 降级到纯关键词匹配
+        try:
+            entries = _kb.retrieve(hexagram_name, question_type, max_entries=5)
+            return {"rag_context": entries if entries else None}
+        except Exception as e2:
+            logger.error(f"Fallback retrieval also failed: {e2}")
+            return {"rag_context": None}
 
 
 def _create_llm_client() -> LLMClient | None:

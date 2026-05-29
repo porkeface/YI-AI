@@ -278,10 +278,18 @@ class KnowledgeBase:
     """易经知识库
 
     提供基于关键词的易经原文检索。
+    支持可选的向量语义检索：传入 vector_backend 和 embedding_service 即可启用，
+    否则自动降级到关键词匹配（向后兼容）。
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        vector_backend: Any | None = None,
+        embedding_service: Any | None = None,
+    ) -> None:
         self._entries = _HEXAGRAM_KNOWLEDGE
+        self._vector_backend = vector_backend
+        self._embedding_service = embedding_service
 
     def retrieve(
         self,
@@ -291,7 +299,7 @@ class KnowledgeBase:
     ) -> list[str]:
         """检索与卦名和问题类型相关的知识条目
 
-        优先返回当前卦的原文，再补充相关主题的其他卦的参考。
+        优先尝试向量语义检索，失败时降级到关键词匹配。
 
         Args:
             hexagram_name: 卦名（如"乾"、"坤"）
@@ -301,6 +309,35 @@ class KnowledgeBase:
         Returns:
             相关知识条目文本列表
         """
+        # 如果有向量后端，用语义检索
+        if self._vector_backend and self._embedding_service:
+            try:
+                return self._vector_retrieve(hexagram_name, question_type, max_entries)
+            except Exception as e:
+                logger.warning(f"Vector search failed, falling back to keyword: {e}")
+
+        # 降级到关键词匹配
+        return self._keyword_retrieve(hexagram_name, question_type, max_entries)
+
+    def _vector_retrieve(
+        self,
+        hexagram_name: str,
+        question_type: str,
+        max_entries: int,
+    ) -> list[str]:
+        """向量语义检索"""
+        query = f"{hexagram_name} {question_type}"
+        vector = self._embedding_service.embed(query)
+        results = self._vector_backend.search(vector, top_k=max_entries)
+        return [r.get("content", "") for r in results if r.get("content")]
+
+    def _keyword_retrieve(
+        self,
+        hexagram_name: str,
+        question_type: str,
+        max_entries: int,
+    ) -> list[str]:
+        """关键词匹配检索（原有逻辑）"""
         results: list[str] = []
 
         # 1. 当前卦的原文（优先级最高）

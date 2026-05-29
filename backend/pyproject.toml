@@ -26,6 +26,18 @@ dev = [
     "ruff>=0.6.0",
     "mypy>=1.11.0",
 ]
+vector = [
+    "qdrant-client>=1.7.0",
+    "fastembed>=0.2.0",
+]
+graph = [
+    "neo4j>=5.0.0",
+]
+all = [
+    "qdrant-client>=1.7.0",
+    "fastembed>=0.2.0",
+    "neo4j>=5.0.0",
+]
 
 [tool.ruff]
 target-version = "py312"

@@ -14,14 +14,38 @@ from typing import Any
 
 import structlog
 
+from ai.knowledge_graph import (
+    GraphBackend,
+    GraphNode,
+    GraphEdge,
+    NodeType,
+    RelationType,
+)
+
 logger = structlog.get_logger()
 
 
-class Neo4jGraphBackend:
-    """Neo4j图谱后端
+def _to_graph_node(record_node: Any, labels: list[str]) -> GraphNode:
+    """将 Neo4j 节点记录转换为 GraphNode"""
+    node_type_str = labels[0] if labels else "concept"
+    try:
+        node_type = NodeType(node_type_str)
+    except ValueError:
+        node_type = NodeType.CONCEPT
+    return GraphNode(
+        id=record_node["id"],
+        node_type=node_type,
+        name=record_node.get("name", ""),
+        properties={
+            k: str(v)
+            for k, v in record_node.items()
+            if k not in ("id", "name")
+        },
+    )
 
-    实现 GraphBackend 协议。需要 neo4j 包：
-      pip install neo4j
+
+class Neo4jGraphBackend:
+    """Neo4j图谱后端 - 实现 GraphBackend 协议
 
     使用方式：
       backend = Neo4jGraphBackend()
@@ -39,7 +63,10 @@ class Neo4jGraphBackend:
         """检查 Neo4j 是否可用"""
         try:
             from neo4j import GraphDatabase
-            driver = GraphDatabase.driver(self._uri, auth=(self._user, self._password))
+
+            driver = GraphDatabase.driver(
+                self._uri, auth=(self._user, self._password)
+            )
             driver.verify_connectivity()
             driver.close()
             return True
@@ -50,101 +77,154 @@ class Neo4jGraphBackend:
     def _get_driver(self) -> Any:
         if self._driver is None:
             from neo4j import GraphDatabase
+
             self._driver = GraphDatabase.driver(
                 self._uri, auth=(self._user, self._password)
             )
         return self._driver
 
-    def add_node(self, node_id: str, node_type: str, properties: dict[str, Any]) -> None:
+    def add_node(self, node: GraphNode) -> None:
+        """添加或更新节点"""
         driver = self._get_driver()
-        query = (
-            f"MERGE (n:{node_type} {{id: $id}}) "
-            f"SET n += $props"
-        )
+        props = {"id": node.id, "name": node.name, **node.properties}
+        query = f"MERGE (n:{node.node_type.value} {{id: $id}}) SET n += $props"
         with driver.session() as session:
-            session.run(query, id=node_id, props=properties)
+            session.run(query, id=node.id, props=props)
 
-    def add_edge(
-        self, source_id: str, target_id: str, relation: str, properties: dict[str, Any]
-    ) -> None:
+    def add_edge(self, edge: GraphEdge) -> None:
+        """添加或更新边"""
         driver = self._get_driver()
+        props = dict(edge.properties)
         query = (
             "MATCH (a {id: $source}), (b {id: $target}) "
-            f"MERGE (a)-[r:{relation}]->(b) "
+            f"MERGE (a)-[r:{edge.relation.value}]->(b) "
             "SET r += $props"
         )
         with driver.session() as session:
-            session.run(query, source=source_id, target=target_id, props=properties)
+            session.run(
+                query,
+                source=edge.source_id,
+                target=edge.target_id,
+                props=props,
+            )
 
-    def get_node(self, node_id: str) -> dict[str, Any] | None:
+    def get_node(self, node_id: str) -> GraphNode | None:
+        """根据ID获取节点"""
         driver = self._get_driver()
-        query = "MATCH (n {id: $id}) RETURN n"
+        query = "MATCH (n {id: $id}) RETURN n, labels(n) as labels"
         with driver.session() as session:
             result = session.run(query, id=node_id)
             record = result.single()
             if record:
-                node = record["n"]
-                return {"id": node["id"], **dict(node)}
+                return _to_graph_node(record["n"], record["labels"])
         return None
 
     def get_neighbors(
-        self, node_id: str, relation: str | None = None, direction: str = "both"
-    ) -> list[dict[str, Any]]:
+        self, node_id: str, relation: RelationType | None = None
+    ) -> tuple[GraphNode, ...]:
+        """获取邻居节点"""
         driver = self._get_driver()
-        if direction == "outgoing":
-            arrow = "-[r]->"
-        elif direction == "incoming":
-            arrow = "<-[r]-"
-        else:
-            arrow = "-[r]-"
-
         if relation:
-            query = f"MATCH (a {{id: $id}}){arrow}(b) WHERE type(r) = $rel RETURN b, type(r) as rel_type"
-            params = {"id": node_id, "rel": relation}
+            query = (
+                f"MATCH (a {{id: $id}})-[r:{relation.value}]-(b) "
+                "RETURN b, labels(b) as labels"
+            )
         else:
-            query = f"MATCH (a {{id: $id}}){arrow}(b) RETURN b, type(r) as rel_type"
-            params = {"id": node_id}
+            query = (
+                "MATCH (a {id: $id})-[r]-(b) "
+                "RETURN b, labels(b) as labels"
+            )
 
-        neighbors = []
+        neighbors: list[GraphNode] = []
+        with driver.session() as session:
+            result = session.run(query, id=node_id)
+            for record in result:
+                neighbors.append(
+                    _to_graph_node(record["b"], record["labels"])
+                )
+        return tuple(neighbors)
+
+    def get_edges(
+        self,
+        source_id: str | None = None,
+        target_id: str | None = None,
+        relation: RelationType | None = None,
+    ) -> tuple[GraphEdge, ...]:
+        """按条件查询边"""
+        driver = self._get_driver()
+        conditions: list[str] = []
+        params: dict[str, Any] = {}
+
+        if source_id:
+            conditions.append("a.id = $source_id")
+            params["source_id"] = source_id
+        if target_id:
+            conditions.append("b.id = $target_id")
+            params["target_id"] = target_id
+
+        where = "WHERE " + " AND ".join(conditions) if conditions else ""
+        rel_filter = f":{relation.value}" if relation else ""
+
+        query = (
+            f"MATCH (a)-[r{rel_filter}]->(b) {where} "
+            "RETURN a.id as source, b.id as target, "
+            "type(r) as rel_type, properties(r) as props"
+        )
+
+        edges: list[GraphEdge] = []
         with driver.session() as session:
             result = session.run(query, **params)
             for record in result:
-                node = record["b"]
-                neighbors.append({
-                    "id": node["id"],
-                    "type": list(node.labels)[0] if node.labels else "UNKNOWN",
-                    **dict(node),
-                })
-        return neighbors
+                try:
+                    rel_type = RelationType(record["rel_type"])
+                except ValueError:
+                    rel_type = RelationType.RELATES_TO
+                edges.append(
+                    GraphEdge(
+                        source_id=record["source"],
+                        target_id=record["target"],
+                        relation=rel_type,
+                        properties={
+                            k: str(v)
+                            for k, v in (record["props"] or {}).items()
+                        },
+                    )
+                )
+        return tuple(edges)
 
-    def find_path(
-        self, source_id: str, target_id: str, max_depth: int = 3
-    ) -> list[list[str]]:
+    def query_by_type(self, node_type: NodeType) -> tuple[GraphNode, ...]:
+        """按类型查询节点"""
         driver = self._get_driver()
-        query = (
-            "MATCH path = shortestPath("
-            "(a {{id: $source}})-[*..{max_depth}]-(b {{id: $target}}))"
-            "RETURN [n IN nodes(path) | n.id] as node_ids"
-        ).format(max_depth=max_depth)
-        paths = []
-        with driver.session() as session:
-            result = session.run(query, source=source_id, target=target_id)
-            for record in result:
-                paths.append(record["node_ids"])
-        return paths
-
-    def search_by_type(self, node_type: str) -> list[dict[str, Any]]:
-        driver = self._get_driver()
-        query = f"MATCH (n:{node_type}) RETURN n"
-        nodes = []
+        query = f"MATCH (n:{node_type.value}) RETURN n, labels(n) as labels"
+        nodes: list[GraphNode] = []
         with driver.session() as session:
             result = session.run(query)
             for record in result:
-                node = record["n"]
-                nodes.append({"id": node["id"], **dict(node)})
-        return nodes
+                nodes.append(
+                    _to_graph_node(record["n"], record["labels"])
+                )
+        return tuple(nodes)
+
+    def find_path(
+        self, start_id: str, end_id: str, max_depth: int = 3
+    ) -> tuple[tuple[str, ...], ...]:
+        """查找最短路径"""
+        driver = self._get_driver()
+        query = (
+            "MATCH path = shortestPath("
+            f"(a {{id: $start}})-[*..{max_depth}]-(b {{id: $end}})) "
+            "RETURN [n IN nodes(path) | n.id] as node_ids"
+        )
+
+        paths: list[tuple[str, ...]] = []
+        with driver.session() as session:
+            result = session.run(query, start=start_id, end=end_id)
+            for record in result:
+                paths.append(tuple(record["node_ids"]))
+        return tuple(paths)
 
     def close(self) -> None:
+        """关闭连接"""
         if self._driver:
             self._driver.close()
             self._driver = None

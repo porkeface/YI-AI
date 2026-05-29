@@ -37,8 +37,10 @@
             >
               图谱
             </NuxtLink>
-            <ThemeToggle />
-            <LanguageSwitcher />
+            <ClientOnly>
+              <ThemeToggle />
+              <LanguageSwitcher />
+            </ClientOnly>
           </ResponsiveNav>
         </div>
       </nav>

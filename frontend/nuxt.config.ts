@@ -9,6 +9,8 @@ export default defineNuxtConfig({
   colorMode: {
     classSuffix: '',
     preference: 'dark',
+    fallback: 'dark',
+    storageKey: 'nuxt-color-mode',
   },
   app: {
     head: {

@@ -147,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import { useDivinationStore } from '~/stores/divination'
 import { useApi } from '~/composables/useApi'
 import { useMockData } from '~/composables/useMockData'

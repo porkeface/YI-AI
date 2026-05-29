@@ -5,11 +5,11 @@
     </PageTransition>
   </NuxtLayout>
 
-  <!-- 性能监控（开发模式） -->
-  <PerformanceMonitor v-if="isDev" />
-
-  <!-- 可访问性检查（开发模式） -->
-  <AccessibilityChecker v-if="isDev" />
+  <!-- 开发模式工具 -->
+  <ClientOnly>
+    <PerformanceMonitor />
+    <AccessibilityChecker />
+  </ClientOnly>
 
   <!-- 通知容器 -->
   <NotificationContainer />
@@ -17,10 +17,6 @@
   <!-- 返回顶部按钮 -->
   <BackToTop />
 </template>
-
-<script setup lang="ts">
-const isDev = process.dev
-</script>
 
 <script setup lang="ts">
 // 应用入口

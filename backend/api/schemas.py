@@ -109,3 +109,42 @@ class ApiResponse(BaseModel):
     success: bool = Field(..., description="请求是否成功")
     data: Any | None = Field(None, description="响应数据")
     error: str | None = Field(None, description="错误信息")
+
+
+# ============================================================================
+# 历史记录模型
+# ============================================================================
+
+
+class HistorySaveRequest(BaseModel):
+    """保存历史记录请求"""
+
+    question: str
+    method: str
+    hexagram_data: dict
+    changed_hexagram_data: dict | None = None
+    analysis_data: dict
+
+
+class HistoryRecordResponse(BaseModel):
+    """历史记录响应"""
+
+    id: int
+    question: str
+    method: str
+    hexagram_name: str
+    fortune: str
+    created_at: str
+    hexagram_data: dict
+    changed_hexagram_data: dict | None = None
+    analysis_data: dict
+
+
+class HistoryListResponse(BaseModel):
+    """历史列表响应"""
+
+    records: list[HistoryRecordResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int

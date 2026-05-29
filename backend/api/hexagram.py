@@ -95,6 +95,31 @@ async def get_hexagram(hexagram_id: int):
     return ApiResponse(success=True, data=_hexagram_to_dict(hexagram))
 
 
+@router.get("/{hexagram_id}/relationships")
+async def get_hexagram_relationships(hexagram_id: int):
+    """获取卦的关系（错卦、综卦、互卦）"""
+    try:
+        hexagram = HexagramEngine.get_by_id(hexagram_id)
+    except ValueError as e:
+        return ApiResponse(success=False, error=str(e))
+
+    try:
+        opposite = HexagramEngine.get_opposite(hexagram)
+        reversed_hex = HexagramEngine.get_reversed(hexagram)
+        interlock = HexagramEngine.get_interlock(hexagram)
+    except ValueError as e:
+        return ApiResponse(success=False, error=f"计算关系失败: {e}")
+
+    return ApiResponse(
+        success=True,
+        data={
+            "opposite": _hexagram_to_summary(opposite),
+            "reversed": _hexagram_to_summary(reversed_hex),
+            "interlock": _hexagram_to_summary(interlock),
+        },
+    )
+
+
 @router.get("/search/{name}")
 async def search_hexagram(name: str):
     """按名称搜索卦（支持模糊匹配）

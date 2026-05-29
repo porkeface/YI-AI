@@ -1,5 +1,12 @@
 // 六爻排盘核心类型定义
 
+// API统一响应格式
+export interface ApiResponse<T = unknown> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
 export type YinYang = 'yin' | 'yang'
 
 export type WuXing = 'metal' | 'wood' | 'water' | 'fire' | 'earth'
@@ -51,8 +58,6 @@ export interface HexagramData {
 }
 
 export interface AnalysisResult {
-  hexagram: HexagramData
-  changedHexagram?: HexagramData
   summary: string        // 总体分析
   advice: string         // 建议
   fortune: '大吉' | '吉' | '中吉' | '小吉' | '平' | '小凶' | '凶' | '大凶'
@@ -66,8 +71,61 @@ export interface DivinationRequest {
   numbers?: number[]       // 数字起卦时的数字
 }
 
+export interface DivinationResultData {
+  hexagram: HexagramData
+  changedHexagram?: HexagramData
+  analysis: AnalysisResult
+}
+
 export interface DivinationResponse {
   success: boolean
-  data?: AnalysisResult
+  data?: DivinationResultData
   error?: string
+}
+
+// 卦象摘要（用于列表展示）
+export interface HexagramSummary {
+  id: number
+  name: string
+  fullName: string
+  palace: string
+  upperTrigram: string
+  lowerTrigram: string
+  element: string
+}
+
+// 卦象关系
+export interface HexagramRelationships {
+  opposite: HexagramSummary
+  reversed: HexagramSummary
+  interlock: HexagramSummary
+}
+
+// 历史记录
+export interface HistoryRecord {
+  id: number
+  question: string
+  method: string
+  hexagramName: string
+  fortune: string
+  createdAt: string
+  hexagramData: HexagramData
+  changedHexagramData: HexagramData | null
+  analysisData: AnalysisResult
+}
+
+export interface HistoryListResponse {
+  records: HistoryRecord[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export interface HistorySaveRequest {
+  question: string
+  method: string
+  hexagramData: HexagramData
+  changedHexagramData: HexagramData | null
+  analysisData: AnalysisResult
 }

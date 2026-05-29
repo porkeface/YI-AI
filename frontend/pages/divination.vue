@@ -137,7 +137,7 @@
       <div v-if="store.hasResult" class="mt-8">
         <HexagramChart
           :hexagram="store.hexagram!"
-          :changed-hexagram="store.changedHexagram"
+          :changed-hexagram="store.changedHexagram ?? undefined"
         />
       </div>
 
@@ -155,11 +155,13 @@ import { useDivinationStore } from '~/stores/divination'
 import { useApi } from '~/composables/useApi'
 import { useMockData } from '~/composables/useMockData'
 import { useNotification } from '~/composables/useNotification'
+import { useHistory } from '~/composables/useHistory'
 
 const store = useDivinationStore()
 const api = useApi()
 const mockData = useMockData()
 const notification = useNotification()
+const history = useHistory()
 
 const number1 = ref('')
 const number2 = ref('')
@@ -176,6 +178,21 @@ watch([number1, number2], ([n1, n2]) => {
     store.setNumbers([parseInt(n1), parseInt(n2)])
   }
 })
+
+async function saveToHistory() {
+  if (!store.hexagram || !store.analysis) return
+  try {
+    await history.saveHistory({
+      question: store.question,
+      method: store.method,
+      hexagramData: store.hexagram,
+      changedHexagramData: store.changedHexagram,
+      analysisData: store.analysis,
+    })
+  } catch {
+    // 保存失败不影响用户体验
+  }
+}
 
 async function handleSubmit() {
   if (!store.canSubmit) return
@@ -201,6 +218,7 @@ async function handleSubmit() {
         response.data.analysis
       )
       notification.success('排盘完成', '卦象已生成，请查看结果')
+      saveToHistory()
     } else {
       // 如果API失败，使用mock数据
       const mockResponse = mockData.getMockDivinationResponse(
@@ -211,9 +229,10 @@ async function handleSubmit() {
       )
 
       if (mockResponse.success && mockResponse.data) {
-        const { hexagram, changedHexagram, ...analysisData } = mockResponse.data
-        store.setResult(hexagram, changedHexagram, analysisData as any)
+        const data = mockResponse.data
+        store.setResult(data.hexagram, data.changedHexagram, data.analysis)
         notification.info('演示模式', '后端API未连接，使用演示数据')
+        saveToHistory()
       } else {
         store.setError(response.error || '起卦失败，请重试')
         notification.error('起卦失败', response.error || '请重试')
@@ -229,9 +248,10 @@ async function handleSubmit() {
     )
 
     if (mockResponse.success && mockResponse.data) {
-      const { hexagram, changedHexagram, ...analysisData } = mockResponse.data
-      store.setResult(hexagram, changedHexagram, analysisData as any)
+      const data = mockResponse.data
+      store.setResult(data.hexagram, data.changedHexagram, data.analysis)
       notification.info('演示模式', '后端API未连接，使用演示数据')
+      saveToHistory()
     } else {
       store.setError('网络连接失败，请检查后端服务')
       notification.error('网络错误', '无法连接到后端服务')

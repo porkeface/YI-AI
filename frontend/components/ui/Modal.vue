@@ -12,7 +12,8 @@
 
       <!-- 模态框内容 -->
       <div
-        class="relative w-full max-w-md p-6 rounded-lg border border-gold-500/30 bg-ink-800 shadow-xl"
+        class="relative w-full p-6 rounded-lg border border-gold-500/30 bg-ink-800 shadow-xl"
+        :class="sizeClass"
       >
         <!-- 标题 -->
         <div class="flex items-center justify-between mb-4">
@@ -40,12 +41,24 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 interface Props {
   visible: boolean
   title: string
+  size?: 'sm' | 'md' | 'lg'
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  size: 'md',
+})
+
+const sizeClass = computed(() => {
+  switch (props.size) {
+    case 'sm': return 'max-w-md'
+    case 'lg': return 'max-w-3xl'
+    default: return 'max-w-lg'
+  }
+})
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]

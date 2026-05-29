@@ -31,6 +31,10 @@ class AgentState(TypedDict, total=False):
     risk_flags: list[str]                    # 风险标记
     sentiment: str                           # 用户情绪判断
 
+    # 记忆系统
+    user_memory: dict | None                 # 记忆召回结果
+    conversation_history: list[dict]         # 会话历史
+
     # 推演结果
     inference_result: dict | None            # 推演结果
 
@@ -50,5 +54,5 @@ class AgentConfig:
     max_retries: int = 2
     timeout_seconds: int = 30
     enable_evolution: bool = True
-    enable_memory: bool = False  # Phase 3.4+
+    enable_memory: bool = True   # Phase 2 M2.4
     safety_check: bool = True

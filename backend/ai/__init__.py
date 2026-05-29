@@ -44,6 +44,23 @@ from ai.reasoning.types import (
     TreeNode,
     ProbabilityTree,
 )
+from ai.memory.engine import MemoryEngine
+from ai.memory.working import WorkingMemory
+from ai.memory.episodic import EpisodicMemory
+from ai.memory.semantic import SemanticMemory
+from ai.memory.procedural import ProceduralMemory
+from ai.memory.types import (
+    MemoryType,
+    EmotionalState,
+    PatternType,
+    UserMemory,
+    Pattern,
+    RiskIndicator,
+    EmotionalTrajectory,
+    UserChangeModel,
+    MemoryRecall,
+    UserMemoryProfile,
+)
 
 __all__ = [
     # 客户端
@@ -106,4 +123,20 @@ __all__ = [
     "TreeBranch",
     "TreeNode",
     "ProbabilityTree",
+    # 记忆系统
+    "MemoryEngine",
+    "WorkingMemory",
+    "EpisodicMemory",
+    "SemanticMemory",
+    "ProceduralMemory",
+    "MemoryType",
+    "EmotionalState",
+    "PatternType",
+    "UserMemory",
+    "Pattern",
+    "RiskIndicator",
+    "EmotionalTrajectory",
+    "UserChangeModel",
+    "MemoryRecall",
+    "UserMemoryProfile",
 ]

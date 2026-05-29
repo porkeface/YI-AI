@@ -1,27 +1,20 @@
 """Agent工作流引擎
 
 LangGraph风格的状态图工作流引擎。
-实现：意图分类 → 规则分析 → RAG检索 → AI解释 → 安全检查 → 输出
+实现：意图分类 → 记忆召回 → 规则分析 → RAG检索 → AI解释 → 安全检查 → 记忆存储 → 输出
 """
 from __future__ import annotations
 
 import asyncio
 import logging
 from typing import Callable, Any
-from dataclasses import dataclass, field
 
 from ai.agent.state import AgentState, AgentConfig
 from ai.agent.tools import AgentTools, ToolResult
+from ai.memory.engine import MemoryEngine
+from ai.memory.types import MemoryType
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class NodeResult:
-    """节点执行结果"""
-    node_name: str
-    state_updates: dict
-    duration_ms: float = 0.0
 
 
 class WorkflowNode:
@@ -145,10 +138,12 @@ class AgentWorkflow:
         """构建默认的Agent工作流
 
         流程：
-        start → classify_intent → rule_analyze → rag_retrieve → interpret → safety_check → end
+        start → classify_intent → [retrieve_memory] → rule_analyze → rag_retrieve
+        → interpret → [evolution_simulate] → safety_check → [store_memory] → end
 
         条件分支：
         - 如果意图是evolution，插入evolution_simulate节点
+        - 如果 enable_memory，插入记忆召回/存储节点
         """
         workflow = AgentWorkflow(config)
         cfg = config or AgentConfig()
@@ -161,11 +156,21 @@ class AgentWorkflow:
         workflow.add_node("evolution_simulate", _evolution_simulate)
         workflow.add_node("safety_check", _safety_check)
 
+        # [H3] 根据 enable_memory 配置决定是否添加记忆节点
+        if cfg.enable_memory:
+            workflow.add_node("retrieve_memory", _retrieve_memory)
+            workflow.add_node("store_memory", _store_memory)
+
         # 设置入口
         workflow.set_entry_point("classify_intent")
 
         # 添加边
-        workflow.add_edge("classify_intent", "rule_analyze")
+        if cfg.enable_memory:
+            workflow.add_edge("classify_intent", "retrieve_memory")
+            workflow.add_edge("retrieve_memory", "rule_analyze")
+        else:
+            workflow.add_edge("classify_intent", "rule_analyze")
+
         workflow.add_edge("rule_analyze", "rag_retrieve")
         workflow.add_edge("rag_retrieve", "interpret")
 
@@ -180,7 +185,12 @@ class AgentWorkflow:
         )
 
         workflow.add_edge("evolution_simulate", "safety_check")
-        workflow.add_edge("safety_check", "end")
+
+        if cfg.enable_memory:
+            workflow.add_edge("safety_check", "store_memory")
+            workflow.add_edge("store_memory", "end")
+        else:
+            workflow.add_edge("safety_check", "end")
 
         return workflow
 
@@ -188,6 +198,23 @@ class AgentWorkflow:
 # ============================================================================
 # 默认节点实现
 # ============================================================================
+
+# [H6] 卦名列表按长度降序，避免子串误匹配
+_HEXAGRAM_NAMES_SORTED = sorted(
+    [
+        "乾", "坤", "屯", "蒙", "需", "讼", "师", "比",
+        "小畜", "履", "泰", "否", "同人", "大有", "谦", "豫",
+        "随", "蛊", "临", "观", "噬嗑", "贲", "剥", "复",
+        "无妄", "大畜", "颐", "大过", "坎", "离", "咸", "恒",
+        "遁", "大壮", "晋", "明夷", "家人", "睽", "蹇", "解",
+        "损", "益", "夬", "姤", "萃", "升", "困", "井",
+        "革", "鼎", "震", "艮", "渐", "归妹", "丰", "旅",
+        "巽", "兑", "涣", "节", "中孚", "小过", "既济", "未济",
+    ],
+    key=len,
+    reverse=True,
+)
+
 
 def _classify_intent(state: AgentState) -> dict:
     """意图分类节点
@@ -225,19 +252,9 @@ def _classify_intent(state: AgentState) -> dict:
                 confidence = 0.7
                 break
 
-    # 提取实体（简单版本）
+    # [H6] 最长匹配优先，避免子串误匹配
     entities: dict = {}
-    hexagram_names = [
-        "乾", "坤", "屯", "蒙", "需", "讼", "师", "比",
-        "小畜", "履", "泰", "否", "同人", "大有", "谦", "豫",
-        "随", "蛊", "临", "观", "噬嗑", "贲", "剥", "复",
-        "无妄", "大畜", "颐", "大过", "坎", "离", "咸", "恒",
-        "遁", "大壮", "晋", "明夷", "家人", "睽", "蹇", "解",
-        "损", "益", "夬", "姤", "萃", "升", "困", "井",
-        "革", "鼎", "震", "艮", "渐", "归妹", "丰", "旅",
-        "巽", "兑", "涣", "节", "中孚", "小过", "既济", "未济",
-    ]
-    for name in hexagram_names:
+    for name in _HEXAGRAM_NAMES_SORTED:
         if name in query:
             entities["hexagram_name"] = name
             break
@@ -312,6 +329,7 @@ def _safety_check(state: AgentState) -> dict:
     """安全检查节点
 
     检查输出是否包含不安全内容。
+    [M10 修复] 只在发现禁止词时修改 final_response，否则保留原值。
     """
     response = state.get("interpretation_draft", "")
 
@@ -332,7 +350,123 @@ def _safety_check(state: AgentState) -> dict:
             "final_response": safe_response,
         }
 
+    # [M10] 无风险时保留原始 response
     return {
         "risk_flags": [],
         "final_response": response,
     }
+
+
+def _retrieve_memory(state: AgentState) -> dict:
+    """记忆召回节点
+
+    从长期记忆中召回与当前查询相关的内容。
+    在意图分类之后、规则分析之前执行。
+    """
+    user_id = state.get("user_id", "")
+    query = state.get("user_query", "")
+    session_id = state.get("session_id", "")
+
+    if not user_id or not query:
+        return {"user_memory": None}
+
+    try:
+        recall_result = MemoryEngine.recall(
+            user_id=user_id,
+            query=query,
+            session_id=session_id if session_id else None,
+            limit=8,
+        )
+
+        if recall_result.total_count == 0:
+            return {"user_memory": None}
+
+        return {
+            "user_memory": {
+                "context_text": recall_result.context_text,
+                "memory_count": recall_result.total_count,
+                "memories": [
+                    {
+                        "type": m.memory_type.value,
+                        "content": m.content,
+                        "hexagram": m.hexagram_name,
+                        "importance": m.importance,
+                    }
+                    for m in recall_result.memories
+                ],
+            },
+        }
+    except Exception as e:
+        logger.error(f"记忆召回失败: {e}")
+        return {"user_memory": None}
+
+
+def _store_memory(state: AgentState) -> dict:
+    """记忆存储节点
+
+    将本次交互的结果存入长期记忆。
+    在安全检查之后、结束之前执行。
+    """
+    user_id = state.get("user_id", "")
+    if not user_id:
+        return {}
+
+    query = state.get("user_query", "")
+    response = state.get("final_response", "")
+    hexagram_data = state.get("hexagram_data")
+    hexagram_name = hexagram_data.get("name") if hexagram_data else None
+    session_id = state.get("session_id", "")
+
+    # 只在有实质内容时存储
+    if not query and not response:
+        return {}
+
+    try:
+        # 构建记忆内容
+        content = query
+        if response:
+            # [L6] 安全截断：在标点处截断而非硬切
+            truncated = _safe_truncate(response, 100)
+            content = f"问题: {query} | 回答摘要: {truncated}"
+
+        # 根据风险标记调整重要度
+        risk_flags = state.get("risk_flags", [])
+        importance = 0.7 if risk_flags else 0.5
+
+        MemoryEngine.store(
+            user_id=user_id,
+            content=content,
+            hexagram_name=hexagram_name,
+            importance=importance,
+            session_id=session_id if session_id else None,
+        )
+    except Exception as e:
+        logger.error(f"记忆存储失败: {e}")
+
+    return {}
+
+
+def _safe_truncate(text: str, max_len: int) -> str:
+    """安全截断文本
+
+    优先在标点处截断，避免截断中文词组。
+
+    Args:
+        text: 原始文本
+        max_len: 最大长度
+
+    Returns:
+        截断后的文本
+    """
+    if len(text) <= max_len:
+        return text
+    # 在 max_len 范围内找最后一个标点
+    punctuation = "。！？，；：、"
+    best_pos = -1
+    for i in range(min(max_len, len(text)) - 1, max_len // 2, -1):
+        if text[i] in punctuation:
+            best_pos = i + 1
+            break
+    if best_pos > 0:
+        return text[:best_pos]
+    return text[:max_len]

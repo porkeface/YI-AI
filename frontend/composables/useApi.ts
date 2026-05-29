@@ -24,11 +24,13 @@ export function useApi() {
         })
       }
 
+      const headers: Record<string, string> = {}
+      if (options.body) {
+        headers['Content-Type'] = 'application/json'
+      }
       const response = await fetch(url.toString(), {
         method: options.method || 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: options.body ? JSON.stringify(options.body) : undefined,
       })
 

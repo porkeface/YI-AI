@@ -186,10 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
 import type { HexagramSummary, HexagramRelationships } from '~/types/hexagram'
-import { useGraph } from '~/composables/useGraph'
-import { useApi } from '~/composables/useApi'
 
 const graphApi = useGraph()
 const { getHexagramDetail } = useApi()

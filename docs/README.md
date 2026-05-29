@@ -1,6 +1,7 @@
 # YI-AI 易学AI系统 - 项目文档总览
 
 > 东方变化学 AI 操作系统
+> 版本：v0.3.0 | 最后更新：2026-05-29
 
 ---
 
@@ -15,6 +16,7 @@
 | 4 | 五年发展规划 | [YI-AI-Five-Year-Plan.md](./YI-AI-Five-Year-Plan.md) | 6阶段里程碑、人员需求、3000万预算、风险缓解、竞品分析、商业化路径、IP保护、社区生态 |
 | 5 | 前端架构设计 | [frontend-architecture.md](./frontend-architecture.md) | 四层前端架构、太极动画(Canvas)、六爻排盘(GSAP)、知识图谱(Cytoscape)、演化树(D3)、3D场景(Three.js)、设计系统 |
 | 6 | 数据架构设计 | [data-architecture.md](./data-architecture.md) | PostgreSQL DDL、Neo4j图谱、Qdrant向量库、Redis缓存、ClickHouse日志、数据同步、备份恢复、安全合规、容量规划 |
+| 7 | **项目进度报告** | [project-progress.md](./project-progress.md) | Phase 1-3.5完成状态、模块清单、API端点、前端页面、测试统计、技术债务 |
 
 ---
 
@@ -28,24 +30,36 @@
 
 ---
 
+## 当前状态（v0.3.0）
+
+| 阶段 | 状态 | 完成度 |
+|------|------|--------|
+| Phase 1 (MVP) | ✅ 已完成 | 100% |
+| Phase 2 | ✅ 已完成 | 100% |
+| Phase 2.5 | ✅ 已完成 | 100% |
+| Phase 3 | ✅ 已完成 | 100% |
+| Phase 3.5 | ✅ 已完成 | 100% |
+| Phase 4 | ⏳ 未开始 | 0% |
+
+**测试状态**：409 个后端测试全部通过
+
+详细进度请查看 [project-progress.md](./project-progress.md)
+
+---
+
 ## 技术栈速览
 
 | 层级 | 技术选型 |
 |------|----------|
-| 前端 | Nuxt 4 + Vue 3 + TailwindCSS + shadcn-vue + GSAP + Cytoscape.js + D3.js + Three.js + Pinia |
-| 后端 | Python 3.12+ + FastAPI + asyncio + Celery |
-| 关系数据库 | PostgreSQL 16 |
-| 缓存 | Redis 7 |
-| 向量数据库 | Qdrant |
-| 图数据库 | Neo4j 5 |
-| 日志分析 | ClickHouse |
-| 对象存储 | MinIO |
-| AI框架 | LangGraph + LangChain |
-| LLM | DeepSeek / Qwen / Claude / GPT (分层调用) |
-| Embedding | bge-m3 (1024维) |
-| RAG | GraphRAG + Hybrid RAG |
-| 部署 | Docker + Kubernetes |
-| 监控 | Prometheus + Grafana + Loki + OpenTelemetry |
+| 前端 | Nuxt 3 + Vue 3 + TailwindCSS + Pinia + GSAP |
+| 后端 | Python 3.12+ + FastAPI + asyncio |
+| 关系数据库 | SQLite (MVP) → PostgreSQL (计划) |
+| 缓存 | 内存dict (MVP) → Redis (计划) |
+| 向量数据库 | 关键词匹配 (MVP) → Qdrant (计划) |
+| 图数据库 | 内存图 (MVP) → Neo4j (计划) |
+| AI框架 | 自研Agent工作流 + LLMClient |
+| LLM | DeepSeek / Qwen (4-Tier分层调用) |
+| RAG | KnowledgeBase + RAGFusion (三路融合) |
 
 ---
 
@@ -70,30 +84,6 @@
 │  1. 基础易学层  八卦│六十四卦│五行│纳甲│六亲     │
 └─────────────────────────────────────────────────┘
 ```
-
----
-
-## 五年规划速览
-
-| 阶段 | 时间 | 核心交付物 | 预算 |
-|------|------|-----------|------|
-| Phase 1 | 0-6月 | 六爻MVP、起卦排盘、基础AI解释 | ~150万 |
-| Phase 2 | 6-12月 | 知识图谱、RAG系统、长期记忆 | ~300万 |
-| Phase 2.5 | 12-18月 | 推演引擎、概率树、时间演化 | ~400万 |
-| Phase 3 | 18-30月 | Agent系统、多模型协同、商业化 | ~700万 |
-| Phase 3.5 | 30-42月 | 梅花易数、奇门遁甲扩展 | ~600万 |
-| Phase 4 | 42-60月 | 完整东方变化学AI平台 | ~850万 |
-
-五年总预算约 **3000万CNY**，收入预测约 **4445万CNY**。
-
----
-
-## 商业化方向
-
-1. **C端订阅** - 个人变化记录、AI趋势分析、心理分析、AI陪伴
-2. **B端企业** - 决策辅助系统、行业趋势分析
-3. **开发者生态** - API平台、插件系统、SDK
-4. **内容/IP** - 易学教育、知识付费
 
 ---
 

@@ -8,7 +8,9 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.auth import router as auth_router
 from api.divination import router as divination_router
+from api.graph import router as graph_router
 from api.health import router as health_router
 from api.hexagram import router as hexagram_router
 from api.history import router as history_router
@@ -25,7 +27,7 @@ app = FastAPI(
 # CORS配置 - 允许Nuxt前端跨域访问
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,10 +35,12 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(health_router)
+app.include_router(auth_router)
 app.include_router(hexagram_router)
 app.include_router(divination_router)
 app.include_router(history_router)
 app.include_router(inference_router)
+app.include_router(graph_router)
 app.include_router(ws_router)
 
 

@@ -524,7 +524,8 @@ async def create_divination(request: DivinationRequest):
     3. 充实卦数据（六亲、六神、干支、世应）
     4. 计算变卦
     5. 进行规则分析
-    6. 返回完整结果
+    6. AI解释（可选）
+    7. 返回完整结果
     """
     # ---- 1. 生成阴阳值和动爻 ----
     if request.method == "time":
@@ -552,6 +553,35 @@ async def create_divination(request: DivinationRequest):
         yin_yangs, moving_positions = _generate_lines_from_manual(
             request.manual_lines, request.moving_positions
         )
+
+    elif request.method == "plum_blossom":
+        # 梅花易数起卦
+        if not request.pb_numbers or len(request.pb_numbers) < 2:
+            return ApiResponse(
+                success=False,
+                error="梅花易数需要提供两个数字(pb_numbers)",
+            )
+        from foundation.plum_blossom import PlumBlossomEngine, NumberBasis
+
+        basis = (
+            NumberBasis.HOUTIAN if request.pb_basis == "后天数"
+            else NumberBasis.XIANTIAN
+        )
+        pb_result = PlumBlossomEngine.divinate_by_numbers(
+            request.pb_numbers[0], request.pb_numbers[1], basis
+        )
+        # 从梅花易数结果获取阴阳值和动爻
+        yin_yangs = [
+            line.yin_yang for line in pb_result.hexagram.lines
+        ]
+        # 梅花易数的动爻从卦的lines中获取
+        moving_positions = [
+            line.position for line in pb_result.hexagram.lines if line.is_moving
+        ]
+        if not moving_positions:
+            # 如果没有动爻，用默认算法
+            ts = int(time_module.time() * 1000)
+            moving_positions = [ts % 6 + 1]
 
     else:
         return ApiResponse(
@@ -602,6 +632,18 @@ async def create_divination(request: DivinationRequest):
     if interpreter is not None:
         try:
             from ai.safety_checker import check_safety
+            from ai.model_router import ModelRouter
+
+            # 使用模型路由评估复杂度
+            routing = ModelRouter.route(
+                request.question, enriched_hexagram, analysis_result
+            )
+            logger.info(
+                "ai_model_routing",
+                tier=routing.tier.value,
+                complexity=routing.complexity_score,
+                reason=routing.reason,
+            )
 
             raw_text = await interpreter.interpret(
                 request.question, enriched_hexagram, analysis_result, question_type

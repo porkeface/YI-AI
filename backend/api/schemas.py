@@ -19,7 +19,7 @@ class DivinationRequest(BaseModel):
     """起卦请求"""
 
     question: str = Field(..., description="用户问题")
-    method: str = Field("time", description="起卦方式: time/number/manual")
+    method: str = Field("time", description="起卦方式: time/number/manual/plum_blossom")
     manual_lines: list[int] | None = Field(
         None, description="手动输入的6个阴阳值(0=阴/1=阳)"
     )
@@ -29,6 +29,20 @@ class DivinationRequest(BaseModel):
     moving_positions: list[int] | None = Field(
         None, description="动爻位置(1-6)，仅manual模式可选"
     )
+    pb_numbers: list[int] | None = Field(
+        None, description="梅花易数的两个数字"
+    )
+    pb_basis: str | None = Field(
+        "先天数", description="梅花易数数字基准: 先天数/后天数"
+    )
+
+
+class InferenceRequest(BaseModel):
+    """推演请求"""
+
+    hexagram_id: int = Field(..., description="卦序号(1-64)")
+    question_type: str = Field("通用", description="问题类型")
+    max_depth: int = Field(3, description="推演深度(1-3)", ge=1, le=3)
 
 
 # ============================================================================

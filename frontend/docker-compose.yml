@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - API_BASE=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - yiai-network
+
+  backend:
+    image: yiai-backend:latest
+    ports:
+      - '8000:8000'
+    environment:
+      - NODE_ENV=production
+    networks:
+      - yiai-network
+
+networks:
+  yiai-network:
+    driver: bridge

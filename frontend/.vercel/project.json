@@ -1,0 +1,11 @@
+{
+  "projectId": "prj_yiai_frontend",
+  "orgId": "team_yiai",
+  "settings": {
+    "framework": "nuxtjs",
+    "buildCommand": "npm run build",
+    "outputDirectory": ".output",
+    "installCommand": "npm install",
+    "devCommand": "npm run dev"
+  }
+}

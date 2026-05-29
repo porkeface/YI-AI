@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 导入过渡动画 */
+@import './transitions.css';
+
+/* 基础样式 */
+@layer base {
+  body {
+    @apply bg-ink-800 text-gold-500 font-chinese;
+  }
+}
+
+/* 组件样式 */
+@layer components {
+  /* 金色发光效果 */
+  .glow-gold {
+    box-shadow: 0 0 10px rgba(212, 160, 23, 0.5),
+                0 0 20px rgba(212, 160, 23, 0.3);
+  }
+
+  .glow-gold-strong {
+    box-shadow: 0 0 15px rgba(212, 160, 23, 0.7),
+                0 0 30px rgba(212, 160, 23, 0.5),
+                0 0 45px rgba(212, 160, 23, 0.3);
+  }
+
+  .text-glow-gold {
+    text-shadow: 0 0 10px rgba(212, 160, 23, 0.5),
+                 0 0 20px rgba(212, 160, 23, 0.3);
+  }
+}
+
+/* 工具类 */
+@layer utilities {
+  /* 滚动条样式 */
+  .scrollbar-gold::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-gold::-webkit-scrollbar-track {
+    background: #1a1a1a;
+  }
+
+  .scrollbar-gold::-webkit-scrollbar-thumb {
+    background: #d4a017;
+    border-radius: 4px;
+  }
+
+  .scrollbar-gold::-webkit-scrollbar-thumb:hover {
+    background: #b8860b;
+  }
+}

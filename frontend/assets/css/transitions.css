@@ -1,0 +1,92 @@
+/* 页面过渡动画 */
+
+/* 淡入淡出 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* 滑入滑出 */
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.slide-enter-from {
+  transform: translateY(20px);
+  opacity: 0;
+}
+
+.slide-leave-to {
+  transform: translateY(-20px);
+  opacity: 0;
+}
+
+/* 缩放 */
+.scale-enter-active,
+.scale-leave-active {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.scale-enter-from,
+.scale-leave-to {
+  transform: scale(0.95);
+  opacity: 0;
+}
+
+/* 金色光芒闪烁 */
+@keyframes gold-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(212, 160, 23, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(212, 160, 23, 0.8);
+  }
+}
+
+.gold-pulse {
+  animation: gold-pulse 2s ease-in-out infinite;
+}
+
+/* 爻出现动画 */
+@keyframes line-appear {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.line-appear {
+  animation: line-appear 0.5s ease-out forwards;
+}
+
+/* 逐爻延迟 */
+.line-appear-1 { animation-delay: 0.1s; }
+.line-appear-2 { animation-delay: 0.2s; }
+.line-appear-3 { animation-delay: 0.3s; }
+.line-appear-4 { animation-delay: 0.4s; }
+.line-appear-5 { animation-delay: 0.5s; }
+.line-appear-6 { animation-delay: 0.6s; }
+
+/* 太极旋转 */
+@keyframes taiji-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.taiji-rotate {
+  animation: taiji-rotate 20s linear infinite;
+}

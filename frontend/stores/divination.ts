@@ -10,6 +10,7 @@ interface DivinationState {
   hexagram: HexagramData | null
   changedHexagram: HexagramData | null
   analysis: AnalysisResult | null
+  aiInterpretation: string | null
   loading: boolean
   error: string | null
 }
@@ -24,6 +25,7 @@ export const useDivinationStore = defineStore('divination', {
     hexagram: null,
     changedHexagram: null,
     analysis: null,
+    aiInterpretation: null,
     loading: false,
     error: null,
   }),
@@ -64,10 +66,11 @@ export const useDivinationStore = defineStore('divination', {
       this.numbers = []
     },
 
-    setResult(hexagram: HexagramData, changedHexagram?: HexagramData, analysis?: AnalysisResult) {
+    setResult(hexagram: HexagramData, changedHexagram?: HexagramData, analysis?: AnalysisResult, aiInterpretation?: string | null) {
       this.hexagram = hexagram
       this.changedHexagram = changedHexagram || null
       this.analysis = analysis || null
+      this.aiInterpretation = aiInterpretation ?? null
       this.loading = false
       this.error = null
     },
@@ -90,6 +93,7 @@ export const useDivinationStore = defineStore('divination', {
       this.hexagram = null
       this.changedHexagram = null
       this.analysis = null
+      this.aiInterpretation = null
       this.loading = false
       this.error = null
     },

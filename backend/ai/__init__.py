@@ -6,6 +6,8 @@
 - LLMClient: LLM API客户端
 - AIInterpreter: AI解释器
 - PromptBuilder: Prompt构建器
+- KnowledgeBase: 易经知识库（RAG）
+- SafetyChecker: 输出安全检查
 """
 
 from ai.llm_client import (
@@ -20,6 +22,8 @@ from ai.llm_client import (
 from ai.interpreter import AIInterpreter
 from ai.prompt_builder import PromptBuilder
 from ai.config import LLM_CONFIGS, DEFAULT_LLM, get_default_config
+from ai.knowledge_base import KnowledgeBase
+from ai.safety_checker import check_safety, SafetyCheckResult, DISCLAIMER
 
 __all__ = [
     # 客户端
@@ -35,6 +39,12 @@ __all__ = [
     "AIInterpreter",
     # Prompt
     "PromptBuilder",
+    # 知识库
+    "KnowledgeBase",
+    # 安全检查
+    "check_safety",
+    "SafetyCheckResult",
+    "DISCLAIMER",
     # 配置
     "LLM_CONFIGS",
     "DEFAULT_LLM",

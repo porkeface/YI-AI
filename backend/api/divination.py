@@ -37,6 +37,56 @@ router = APIRouter(prefix="/api/divination", tags=["divination"])
 
 
 # ============================================================================
+# AI解释器（懒加载）
+# ============================================================================
+
+_ai_interpreter = None
+_ai_init_attempted = False
+
+
+def _get_ai_interpreter():
+    """获取AI解释器单例（懒加载）
+
+    首次调用时尝试初始化，失败后不再重试。
+    未配置API Key时返回None，不影响主流程。
+
+    Returns:
+        AIInterpreter实例，或None（不可用时）
+    """
+    global _ai_interpreter, _ai_init_attempted
+
+    if _ai_init_attempted:
+        return _ai_interpreter
+
+    _ai_init_attempted = True
+
+    try:
+        from ai.config import get_default_config
+        from ai.llm_client import LLMClient
+        from ai.interpreter import AIInterpreter
+        from ai.knowledge_base import KnowledgeBase
+
+        config = get_default_config()
+        llm_client = LLMClient(config)
+        knowledge_base = KnowledgeBase()
+        _ai_interpreter = AIInterpreter(llm_client, knowledge_base)
+        logger.info(
+            "ai_interpreter_initialized",
+            provider=config.provider,
+            model=config.model,
+        )
+    except ValueError as e:
+        # API Key未配置，这是正常情况
+        logger.info("ai_interpreter_unavailable", reason=str(e))
+        _ai_interpreter = None
+    except Exception as e:
+        logger.error("ai_interpreter_init_failed", error=str(e), exc_info=True)
+        _ai_interpreter = None
+
+    return _ai_interpreter
+
+
+# ============================================================================
 # 常量
 # ============================================================================
 
@@ -546,7 +596,28 @@ async def create_divination(request: DivinationRequest):
         logger.error("rule_analysis_unexpected_error", error=str(e), exc_info=True)
         analysis_result = _default_analysis_result(moving_positions)
 
-    # ---- 7. 构建响应 ----
+    # ---- 7. AI解释（可选，失败不影响主流程） ----
+    ai_interpretation: str | None = None
+    interpreter = _get_ai_interpreter()
+    if interpreter is not None:
+        try:
+            from ai.safety_checker import check_safety
+
+            raw_text = await interpreter.interpret(
+                request.question, enriched_hexagram, analysis_result, question_type
+            )
+            check_result = check_safety(raw_text)
+            ai_interpretation = check_result.text
+            if check_result.warnings:
+                logger.info(
+                    "ai_safety_warnings",
+                    warnings=check_result.warnings,
+                )
+        except Exception as e:
+            logger.warning("ai_interpretation_failed", error=str(e))
+            ai_interpretation = None
+
+    # ---- 8. 构建响应 ----
     hexagram_response = _hexagram_to_response(enriched_hexagram)
     changed_response = (
         _hexagram_to_response(changed_hexagram)
@@ -560,6 +631,7 @@ async def create_divination(request: DivinationRequest):
         "hexagram": hexagram_response,
         "changedHexagram": changed_response,
         "analysis": analysis_response,
+        "aiInterpretation": ai_interpretation,
     }
 
     return ApiResponse(success=True, data=data)

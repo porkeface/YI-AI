@@ -52,6 +52,7 @@ class PromptBuilder:
         question: str,
         hexagram: Hexagram,
         analysis: RuleAnalysisResult,
+        rag_context: list[str] | None = None,
     ) -> str:
         """构建用户提示词
 
@@ -62,6 +63,7 @@ class PromptBuilder:
             question: 用户的问题
             hexagram: 卦象数据
             analysis: 规则分析结果
+            rag_context: RAG检索到的相关易经原文（可选）
 
         Returns:
             用户提示词文本
@@ -80,7 +82,12 @@ class PromptBuilder:
         # 4. 规则分析结果
         parts.append(self._format_analysis(analysis))
 
-        # 5. 指令
+        # 5. RAG知识参考
+        if rag_context:
+            rag_text = "\n".join(f"  · {entry}" for entry in rag_context)
+            parts.append(f"【易经原文参考】\n{rag_text}")
+
+        # 6. 指令
         parts.append(
             "请根据以上信息，为用户生成一段通俗易懂的卦象解释。"
             "要结合用户的具体问题，给出实用的建议。"

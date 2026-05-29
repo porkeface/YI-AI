@@ -145,6 +145,17 @@
       <div v-if="store.analysis" class="mt-8">
         <AnalysisPanel :analysis="store.analysis" />
       </div>
+
+      <!-- AI解读 -->
+      <div v-if="store.aiInterpretation" class="mt-8">
+        <div class="rounded-lg border border-gold-500/30 bg-ink-900/50 p-6">
+          <h3 class="text-lg font-semibold text-gold-500 mb-4 flex items-center gap-2">
+            <span class="text-xl">✦</span>
+            AI 深度解读
+          </h3>
+          <div class="text-gold-500/80 leading-relaxed whitespace-pre-wrap">{{ store.aiInterpretation }}</div>
+        </div>
+      </div>
     </ResponsiveContainer>
   </div>
 </template>
@@ -215,7 +226,8 @@ async function handleSubmit() {
       store.setResult(
         response.data.hexagram,
         response.data.changedHexagram,
-        response.data.analysis
+        response.data.analysis,
+        response.data.aiInterpretation
       )
       notification.success('排盘完成', '卦象已生成，请查看结果')
       saveToHistory()

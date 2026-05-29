@@ -75,6 +75,7 @@ export interface DivinationResultData {
   hexagram: HexagramData
   changedHexagram?: HexagramData
   analysis: AnalysisResult
+  aiInterpretation?: string | null
 }
 
 export interface DivinationResponse {

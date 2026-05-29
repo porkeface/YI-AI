@@ -162,3 +162,47 @@ class HistoryListResponse(BaseModel):
     page: int
     limit: int
     total_pages: int
+
+
+# ============================================================================
+# Phase 3 新增模型
+# ============================================================================
+
+
+class DeepReasoningRequest(BaseModel):
+    """深度推演请求"""
+
+    hexagram_name: str = Field(..., description="卦名（如'乾为天'）")
+    question_type: str = Field("通用", description="问题类型")
+    month_branch: str = Field("子", description="月份地支")
+    max_steps: int = Field(10, description="推理步数(1-10)", ge=1, le=10)
+
+
+class ProbabilityTreeRequest(BaseModel):
+    """概率树推演请求"""
+
+    hexagram_name: str = Field(..., description="卦名（如'乾为天'）")
+    question_type: str = Field("通用", description="问题类型")
+    month_branch: str = Field("子", description="月份地支")
+    max_depth: int = Field(5, description="树深度(1-10)", ge=1, le=10)
+
+
+class QiMenRequest(BaseModel):
+    """奇门遁甲排盘请求"""
+
+    year: int = Field(..., description="公历年份")
+    month: int = Field(..., description="月份(1-12)", ge=1, le=12)
+    day: int = Field(..., description="日期(1-31)", ge=1, le=31)
+    hour: int = Field(..., description="时辰(0-23)", ge=0, le=23)
+    question_type: str = Field("general", description="问题类型: general/career/wealth/health/lawsuit")
+
+
+class ZiWeiRequest(BaseModel):
+    """紫微斗数排盘请求"""
+
+    year: int = Field(..., description="出生公历年份")
+    month: int = Field(..., description="出生月份(1-12)", ge=1, le=12)
+    day: int = Field(..., description="出生日期(1-31)", ge=1, le=31)
+    hour: int = Field(..., description="出生时辰(0-23)", ge=0, le=23)
+    gender: str = Field(..., description="性别: 男/女")
+    question_type: str = Field("general", description="问题类型: general/事业/财运/感情/健康/人际")

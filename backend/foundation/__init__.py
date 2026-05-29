@@ -23,6 +23,30 @@ from foundation.gan_zhi_engine import GanZhiEngine
 from foundation.six_relation_engine import SixRelationEngine
 from foundation.six_spirit_engine import SixSpiritEngine
 from foundation.shi_ying_engine import ShiYingEngine
+from foundation.qimen_engine import (
+    QiMenEngine,
+    QMDoor,
+    QMStar,
+    QMSpirit,
+    QMSanQi,
+    QMLiuYi,
+    QMPalace,
+    QMPalaceInfo,
+    QMChart,
+    QMAnalysis,
+)
+from foundation.ziwei_engine import (
+    ZiWeiEngine,
+    ZWStar,
+    ZWAuxStar,
+    ZWHua,
+    ZWPalace,
+    ZWPalaceType,
+    ZWStarPosition,
+    ZWPalaceInfo,
+    ZWChart,
+    ZWAnalysis,
+)
 
 __all__ = [
     # 类型
@@ -45,4 +69,26 @@ __all__ = [
     "SixRelationEngine",
     "SixSpiritEngine",
     "ShiYingEngine",
+    # 奇门遁甲
+    "QiMenEngine",
+    "QMDoor",
+    "QMStar",
+    "QMSpirit",
+    "QMSanQi",
+    "QMLiuYi",
+    "QMPalace",
+    "QMPalaceInfo",
+    "QMChart",
+    "QMAnalysis",
+    # 紫微斗数
+    "ZiWeiEngine",
+    "ZWStar",
+    "ZWAuxStar",
+    "ZWHua",
+    "ZWPalace",
+    "ZWPalaceType",
+    "ZWStarPosition",
+    "ZWPalaceInfo",
+    "ZWChart",
+    "ZWAnalysis",
 ]

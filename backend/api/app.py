@@ -18,12 +18,15 @@ from api.hexagram import router as hexagram_router
 from api.history import router as history_router
 from api.inference import router as inference_router
 from api.ws_divination import router as ws_router
+from api.qimen import router as qimen_router
+from api.ziwei import router as ziwei_router
+from api.reasoning import router as reasoning_router
 from db.database import init_db
 
 app = FastAPI(
     title="YI-AI 易学AI系统",
     description="东方变化学AI操作系统 API",
-    version="0.1.0",
+    version="0.3.0",
 )
 
 # 中间件（按注册的逆序执行）
@@ -47,6 +50,9 @@ app.include_router(inference_router)
 app.include_router(graph_router)
 app.include_router(agent_router)
 app.include_router(ws_router)
+app.include_router(qimen_router)
+app.include_router(ziwei_router)
+app.include_router(reasoning_router)
 
 
 @app.on_event("startup")

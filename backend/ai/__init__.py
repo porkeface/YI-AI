@@ -33,6 +33,17 @@ from ai.evaluation.evaluator import AutoEvaluator, EvalResult, EvalCase
 from ai.evaluation.ab_testing import ABTestManager, Experiment
 from ai.prompt_manager.version_control import PromptVersionControl, PromptVersion
 from ai.prompt_manager.registry import PromptRegistry, PromptTemplate
+from ai.reasoning.deep_reasoning import DeepReasoningEngine
+from ai.reasoning.probability_tree import ProbabilityTreeEngine
+from ai.reasoning.types import (
+    StepType,
+    ConfidenceLevel,
+    ReasoningStep,
+    ReasoningChain,
+    TreeBranch,
+    TreeNode,
+    ProbabilityTree,
+)
 
 __all__ = [
     # 客户端
@@ -85,4 +96,14 @@ __all__ = [
     "PromptVersion",
     "PromptRegistry",
     "PromptTemplate",
+    # 深度推演
+    "DeepReasoningEngine",
+    "ProbabilityTreeEngine",
+    "StepType",
+    "ConfidenceLevel",
+    "ReasoningStep",
+    "ReasoningChain",
+    "TreeBranch",
+    "TreeNode",
+    "ProbabilityTree",
 ]

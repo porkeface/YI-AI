@@ -37,6 +37,13 @@
             >
               图谱
             </NuxtLink>
+            <NuxtLink
+              to="/agent"
+              class="text-gold-500/80 hover:text-gold-400 transition-colors duration-200 text-sm font-medium"
+              active-class="text-gold-400"
+            >
+              Agent
+            </NuxtLink>
             <ClientOnly>
               <ThemeToggle />
               <LanguageSwitcher />

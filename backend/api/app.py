@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.agent import router as agent_router
 from api.auth import router as auth_router
 from api.divination import router as divination_router
 from api.graph import router as graph_router
@@ -41,6 +42,7 @@ app.include_router(divination_router)
 app.include_router(history_router)
 app.include_router(inference_router)
 app.include_router(graph_router)
+app.include_router(agent_router)
 app.include_router(ws_router)
 
 

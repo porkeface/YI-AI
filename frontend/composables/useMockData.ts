@@ -9,7 +9,7 @@ export function useMockData() {
    */
   function getMockDivinationResponse(
     question: string,
-    method: 'manual' | 'time' | 'number',
+    method: 'manual' | 'time' | 'number' | 'plum_blossom',
     manualLines?: any[],
     numbers?: number[]
   ): DivinationResponse {

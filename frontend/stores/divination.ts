@@ -4,7 +4,7 @@ import type { HexagramData, AnalysisResult, DivinationRequest, YinYang } from '~
 interface DivinationState {
   question: string
   questionType: string
-  method: 'manual' | 'time' | 'number'
+  method: 'manual' | 'time' | 'number' | 'plum_blossom'
   manualLines: YinYang[]
   numbers: number[]
   hexagram: HexagramData | null
@@ -47,7 +47,7 @@ export const useDivinationStore = defineStore('divination', {
       this.question = question
     },
 
-    setMethod(method: 'manual' | 'time' | 'number') {
+    setMethod(method: 'manual' | 'time' | 'number' | 'plum_blossom') {
       this.method = method
       this.resetLines()
     },

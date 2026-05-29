@@ -13,6 +13,8 @@ from foundation.types import Hexagram, RuleAnalysisResult
 from ai.llm_client import LLMClient, LLMError
 from ai.prompt_builder import PromptBuilder
 from ai.knowledge_base import KnowledgeBase
+from ai.knowledge_graph import KnowledgeGraph
+from ai.rag_fusion import RAGFusion
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +24,7 @@ class AIInterpreter:
 
     核心职责：
     1. 接收规则分析结果
-    2. 构建Prompt（含RAG知识参考）
+    2. 构建Prompt（含三路RAG融合知识参考）
     3. 调用LLM生成解释
     4. 返回自然语言解释
     """
@@ -31,38 +33,41 @@ class AIInterpreter:
         self,
         llm_client: LLMClient,
         knowledge_base: KnowledgeBase | None = None,
+        knowledge_graph: KnowledgeGraph | None = None,
     ) -> None:
         """初始化解释器
 
         Args:
             llm_client: LLM API客户端
-            knowledge_base: 易经知识库（可选，启用RAG）
+            knowledge_base: 易经知识库（可选，向量检索）
+            knowledge_graph: 知识图谱（可选，图谱检索）
         """
         self.llm_client = llm_client
         self.prompt_builder = PromptBuilder()
-        self.knowledge_base = knowledge_base
+        self.rag = RAGFusion(knowledge_base, knowledge_graph)
 
     def _retrieve_context(
-        self, hexagram: Hexagram, question_type: str
+        self,
+        hexagram: Hexagram,
+        question_type: str,
+        analysis: RuleAnalysisResult,
     ) -> list[str] | None:
-        """从知识库检索相关上下文
+        """三路RAG融合检索
 
         Args:
             hexagram: 卦象数据
             question_type: 问题类型
+            analysis: 规则分析结果
 
         Returns:
-            相关知识条目列表，无知识库时返回None
+            融合后的上下文列表
         """
-        if self.knowledge_base is None:
-            return None
-
         try:
-            context = self.knowledge_base.retrieve(
-                hexagram.name, question_type, max_entries=5
+            context = self.rag.retrieve(
+                hexagram, question_type, analysis, max_results=8
             )
             logger.info(
-                "RAG检索完成，卦名=%s，返回%d条参考",
+                "三路RAG检索完成，卦名=%s，返回%d条参考",
                 hexagram.name,
                 len(context),
             )
@@ -81,8 +86,8 @@ class AIInterpreter:
         """生成AI解释（非流式）
 
         流程：
-        1. 构建上下文（卦象信息、规则分析结果）
-        2. 调用RAG获取参考
+        1. 三路RAG融合检索上下文
+        2. 构建Prompt
         3. 调用LLM生成解释
         4. 返回自然语言解释
 
@@ -90,7 +95,7 @@ class AIInterpreter:
             question: 用户的问题
             hexagram: 卦象数据
             analysis: 规则分析结果
-            question_type: 问题类型（用于RAG检索）
+            question_type: 问题类型
 
         Returns:
             自然语言解释文本
@@ -98,7 +103,7 @@ class AIInterpreter:
         Raises:
             LLMError: LLM调用失败
         """
-        rag_context = self._retrieve_context(hexagram, question_type)
+        rag_context = self._retrieve_context(hexagram, question_type, analysis)
 
         system_prompt = self.prompt_builder.build_system_prompt()
         user_prompt = self.prompt_builder.build_user_prompt(
@@ -128,14 +133,11 @@ class AIInterpreter:
     ) -> AsyncIterator[str]:
         """流式生成AI解释
 
-        与interpret相同的流程，但使用流式API，
-        逐步返回生成的文本片段。
-
         Args:
             question: 用户的问题
             hexagram: 卦象数据
             analysis: 规则分析结果
-            question_type: 问题类型（用于RAG检索）
+            question_type: 问题类型
 
         Yields:
             逐步生成的文本片段
@@ -143,7 +145,7 @@ class AIInterpreter:
         Raises:
             LLMError: LLM调用失败
         """
-        rag_context = self._retrieve_context(hexagram, question_type)
+        rag_context = self._retrieve_context(hexagram, question_type, analysis)
 
         system_prompt = self.prompt_builder.build_system_prompt()
         user_prompt = self.prompt_builder.build_user_prompt(

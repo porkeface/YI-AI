@@ -65,15 +65,18 @@ def _get_ai_interpreter():
         from ai.llm_client import LLMClient
         from ai.interpreter import AIInterpreter
         from ai.knowledge_base import KnowledgeBase
+        from ai.knowledge_graph import KnowledgeGraph
 
         config = get_default_config()
         llm_client = LLMClient(config)
         knowledge_base = KnowledgeBase()
-        _ai_interpreter = AIInterpreter(llm_client, knowledge_base)
+        knowledge_graph = KnowledgeGraph()
+        _ai_interpreter = AIInterpreter(llm_client, knowledge_base, knowledge_graph)
         logger.info(
             "ai_interpreter_initialized",
             provider=config.provider,
             model=config.model,
+            kg_nodes=knowledge_graph.stats.get("total_nodes", 0),
         )
     except ValueError as e:
         # API Key未配置，这是正常情况

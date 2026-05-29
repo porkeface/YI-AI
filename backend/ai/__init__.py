@@ -23,6 +23,9 @@ from ai.interpreter import AIInterpreter
 from ai.prompt_builder import PromptBuilder
 from ai.config import LLM_CONFIGS, DEFAULT_LLM, get_default_config
 from ai.knowledge_base import KnowledgeBase
+from ai.knowledge_graph import KnowledgeGraph, KnowledgeGraphBuilder
+from ai.rag_fusion import RAGFusion
+from ai.model_router import ModelRouter, ModelTier
 from ai.safety_checker import check_safety, SafetyCheckResult, DISCLAIMER
 
 __all__ = [
@@ -41,6 +44,14 @@ __all__ = [
     "PromptBuilder",
     # 知识库
     "KnowledgeBase",
+    # 知识图谱
+    "KnowledgeGraph",
+    "KnowledgeGraphBuilder",
+    # RAG融合
+    "RAGFusion",
+    # 模型路由
+    "ModelRouter",
+    "ModelTier",
     # 安全检查
     "check_safety",
     "SafetyCheckResult",

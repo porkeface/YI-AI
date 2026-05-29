@@ -133,7 +133,7 @@ export function useHexagram() {
    */
   function mockDivination(
     question: string,
-    method: 'manual' | 'time' | 'number',
+    method: 'manual' | 'time' | 'number' | 'plum_blossom',
     manualLines?: YinYang[],
     numbers?: number[]
   ) {

@@ -13,6 +13,7 @@ from api.health import router as health_router
 from api.hexagram import router as hexagram_router
 from api.history import router as history_router
 from api.inference import router as inference_router
+from api.ws_divination import router as ws_router
 from db.database import init_db
 
 app = FastAPI(
@@ -36,6 +37,7 @@ app.include_router(hexagram_router)
 app.include_router(divination_router)
 app.include_router(history_router)
 app.include_router(inference_router)
+app.include_router(ws_router)
 
 
 @app.on_event("startup")

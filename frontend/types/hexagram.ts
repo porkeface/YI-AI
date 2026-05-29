@@ -66,9 +66,11 @@ export interface AnalysisResult {
 
 export interface DivinationRequest {
   question: string
-  method: 'manual' | 'time' | 'number'
+  method: 'manual' | 'time' | 'number' | 'plum_blossom'
   manualLines?: YinYang[]  // 手动输入时的六爻
   numbers?: number[]       // 数字起卦时的数字
+  pbNumbers?: number[]     // 梅花易数的数字
+  pbBasis?: string         // 梅花易数数字基准
 }
 
 export interface DivinationResultData {

@@ -95,12 +95,12 @@ class AgentOrchestrator:
             elapsed = (time.monotonic() - start) * 1000
             logger.error(f"agent_workflow_failed: {e}")
             return AgentResponse(
-                response=f"处理过程中出现错误：{str(e)}",
+                response="处理过程中出现错误，请稍后重试。",
                 intent="error",
                 confidence=0.0,
                 risk_flags=[],
                 inference_result=None,
-                metadata={"error": str(e)},
+                metadata={"error": True},
                 duration_ms=elapsed,
             )
 
@@ -128,9 +128,14 @@ class AgentOrchestrator:
         }
 
         # 执行意图分类
-        from ai.agent.workflow import _classify_intent
-        intent_result = _classify_intent(initial_state)
-        initial_state.update(intent_result)
+        try:
+            from ai.agent.workflow import _classify_intent
+            intent_result = _classify_intent(initial_state)
+            initial_state.update(intent_result)
+        except Exception as e:
+            logger.error(f"classify_intent_failed: {e}")
+            yield StreamEvent(event_type="error", data="意图分类失败，请稍后重试。")
+            return
 
         yield StreamEvent(
             event_type="status",
@@ -140,16 +145,37 @@ class AgentOrchestrator:
 
         # 执行规则分析
         yield StreamEvent(event_type="status", data="正在执行规则分析...")
-        from ai.agent.workflow import _rule_analyze
-        rule_result = _rule_analyze(initial_state)
-        initial_state.update(rule_result)
+        try:
+            from ai.agent.workflow import _rule_analyze
+            rule_result = _rule_analyze(initial_state)
+            initial_state.update(rule_result)
+        except Exception as e:
+            logger.error(f"rule_analyze_failed: {e}")
+            yield StreamEvent(event_type="error", data="规则分析失败，请稍后重试。")
+            return
+
+        # RAG检索知识上下文
+        yield StreamEvent(event_type="status", data="正在检索知识库...")
+        try:
+            from ai.agent.workflow import _rag_retrieve
+            rag_result = _rag_retrieve(initial_state)
+            initial_state.update(rag_result)
+        except Exception as e:
+            logger.error(f"rag_retrieve_failed: {e}")
+            yield StreamEvent(event_type="error", data="知识检索失败，请稍后重试。")
+            return
 
         # 如果是推演意图，执行推演
         if initial_state.get("intent") == "evolution" and self.config.enable_evolution:
             yield StreamEvent(event_type="status", data="正在执行推演模拟...")
-            from ai.agent.workflow import _evolution_simulate
-            evo_result = _evolution_simulate(initial_state)
-            initial_state.update(evo_result)
+            try:
+                from ai.agent.workflow import _evolution_simulate
+                evo_result = _evolution_simulate(initial_state)
+                initial_state.update(evo_result)
+            except Exception as e:
+                logger.error(f"evolution_simulate_failed: {e}")
+                yield StreamEvent(event_type="error", data="推演模拟失败，请稍后重试。")
+                return
 
             if initial_state.get("inference_result"):
                 yield StreamEvent(
@@ -158,13 +184,26 @@ class AgentOrchestrator:
                     metadata={"inference": initial_state["inference_result"]},
                 )
 
-        # AI解释（这里返回占位，实际需要LLM调用）
+        # AI解释 -- 调用LLM生成解释
         yield StreamEvent(event_type="status", data="正在生成解释...")
+        try:
+            from ai.agent.workflow import _interpret
+            interpret_result = await _interpret(initial_state)
+            initial_state.update(interpret_result)
+        except Exception as e:
+            logger.error(f"interpret_failed: {e}")
+            yield StreamEvent(event_type="error", data="生成解释失败，请稍后重试。")
+            return
 
         # 安全检查
-        from ai.agent.workflow import _safety_check
-        safety_result = _safety_check(initial_state)
-        initial_state.update(safety_result)
+        try:
+            from ai.agent.workflow import _safety_check
+            safety_result = _safety_check(initial_state)
+            initial_state.update(safety_result)
+        except Exception as e:
+            logger.error(f"safety_check_failed: {e}")
+            yield StreamEvent(event_type="error", data="安全检查失败，请稍后重试。")
+            return
 
         yield StreamEvent(
             event_type="content",

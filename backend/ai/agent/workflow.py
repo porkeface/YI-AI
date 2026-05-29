@@ -7,10 +7,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Callable, Any
 
 from ai.agent.state import AgentState, AgentConfig
 from ai.agent.tools import AgentTools, ToolResult
+from ai.knowledge_base import KnowledgeBase
+from ai.llm_client import LLMClient, LLMConfig, LLMError
 from ai.memory.engine import MemoryEngine
 from ai.memory.types import MemoryType
 
@@ -215,6 +218,9 @@ _HEXAGRAM_NAMES_SORTED = sorted(
     reverse=True,
 )
 
+# 模块级单例
+_kb = KnowledgeBase()
+
 
 def _classify_intent(state: AgentState) -> dict:
     """意图分类节点
@@ -282,24 +288,174 @@ def _rule_analyze(state: AgentState) -> dict:
 def _rag_retrieve(state: AgentState) -> dict:
     """RAG检索节点
 
-    检索相关知识上下文。
+    使用 KnowledgeBase 进行关键词检索，获取相关易经原文。
     """
-    # RAG检索需要外部依赖（Qdrant/Neo4j），这里返回占位
-    # 实际实现在集成阶段完成
-    return {"rag_context": None}
+    hexagram_data = state.get("hexagram_data")
+    user_query = state.get("user_query", "")
+
+    if not hexagram_data:
+        return {"rag_context": None}
+
+    hexagram_name = hexagram_data.get("name", "")
+    if not hexagram_name:
+        return {"rag_context": None}
+
+    # 从用户查询推断问题类型
+    question_type = "通用"
+    for keyword, qtype in [
+        ("事业", "事业"), ("工作", "事业"),
+        ("感情", "感情"), ("恋爱", "感情"), ("婚姻", "婚姻"),
+        ("财运", "财运"), ("钱", "财运"), ("投资", "财运"),
+        ("健康", "健康"), ("身体", "健康"),
+    ]:
+        if keyword in user_query:
+            question_type = qtype
+            break
+
+    try:
+        entries = _kb.retrieve(hexagram_name, question_type, max_entries=5)
+        return {"rag_context": entries if entries else None}
+    except Exception as e:
+        logger.error(f"RAG retrieval failed: {e}")
+        return {"rag_context": None}
 
 
-def _interpret(state: AgentState) -> dict:
-    """AI解释节点
+def _create_llm_client() -> LLMClient | None:
+    """创建LLM客户端（从环境变量读取配置）"""
+    api_key = os.environ.get("YI_AI_LLM_API_KEY") or os.environ.get("DEEPSEEK_API_KEY", "")
+    base_url = os.environ.get("YI_AI_LLM_BASE_URL", "https://api.deepseek.com")
+    model = os.environ.get("YI_AI_LLM_MODEL", "deepseek-chat")
 
-    生成AI解释。实际调用LLM。
-    """
-    # 这个节点在实际运行时会被注入LLM调用逻辑
-    # 这里返回占位
-    return {
-        "interpretation_draft": "",
-        "current_step": "interpret_complete",
-    }
+    if not api_key:
+        logger.warning("No LLM API key configured, _interpret will return fallback")
+        return None
+
+    return LLMClient(LLMConfig(
+        provider="deepseek",
+        api_key=api_key,
+        base_url=base_url,
+        model=model,
+        max_tokens=2000,
+        temperature=0.7,
+    ))
+
+
+_SYSTEM_PROMPT = (
+    "你是一位精通易学的AI助手。你的任务是将六爻排盘的规则分析结果"
+    "翻译成通俗易懂的现代汉语解释。\n\n"
+    "核心原则：\n"
+    "1. 你只负责\"解释\"规则结果，不负责\"计算\"\n"
+    "2. 解释要通俗易懂，避免专业术语堆砌\n"
+    "3. 要结合用户的具体问题来解释\n"
+    "4. 要给出实用的建议\n"
+    "5. 不要做绝对化的预测，用\"趋势\"、\"可能性\"等词语\n"
+    "6. 要有温度，不要冷冰冰的\n\n"
+    "输出格式：\n"
+    "1. 首先用一句话概括卦象的核心含义\n"
+    "2. 然后详细解释各爻的关系和含义\n"
+    "3. 最后给出实用建议\n\n"
+    "注意：不要使用\"算命\"、\"注定\"等词语，"
+    "用\"趋势\"、\"分析\"、\"参考\"等中性词。"
+)
+
+
+async def _interpret(state: AgentState) -> dict:
+    """AI解释节点 -- 调用LLM生成解释"""
+    hexagram_data = state.get("hexagram_data")
+    user_query = state.get("user_query", "")
+    rag_context = state.get("rag_context")
+    rule_analysis = state.get("rule_analysis")
+
+    # 如果没有卦象数据，返回降级解释
+    if not hexagram_data:
+        return {
+            "interpretation_draft": "抱歉，未能获取到卦象数据，无法生成解释。",
+            "current_step": "interpret_complete",
+        }
+
+    # 尝试调用LLM
+    llm_client = _create_llm_client()
+    if not llm_client:
+        return {
+            "interpretation_draft": _generate_fallback_interpretation(hexagram_data, user_query),
+            "current_step": "interpret_complete",
+        }
+
+    try:
+        user_prompt = _build_interpret_prompt(user_query, hexagram_data, rule_analysis, rag_context)
+
+        async with llm_client:
+            response = await llm_client.chat(_SYSTEM_PROMPT, user_prompt)
+
+        return {
+            "interpretation_draft": response,
+            "current_step": "interpret_complete",
+        }
+    except LLMError as e:
+        logger.error(f"LLM call failed: {e}")
+        return {
+            "interpretation_draft": _generate_fallback_interpretation(hexagram_data, user_query),
+            "current_step": "interpret_complete",
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error in _interpret: {e}")
+        return {
+            "interpretation_draft": _generate_fallback_interpretation(hexagram_data, user_query),
+            "current_step": "interpret_complete",
+        }
+
+
+def _build_interpret_prompt(
+    user_query: str,
+    hexagram_data: dict,
+    rule_analysis: dict | None,
+    rag_context: list[str] | None,
+) -> str:
+    """构建解释提示词（简化版，不依赖 Hexagram 对象）"""
+    parts: list[str] = [f"【用户问题】{user_query}"]
+
+    # 卦象信息
+    name = hexagram_data.get("name", "未知")
+    judgment = hexagram_data.get("judgment", "")
+    image = hexagram_data.get("image", "")
+    parts.append(f"【卦象信息】\n- 卦名：{name}\n- 卦辞：{judgment}\n- 象辞：{image}")
+
+    # 规则分析
+    if rule_analysis:
+        yong_shen = rule_analysis.get("yong_shen", "")
+        prosperity = rule_analysis.get("prosperity", "")
+        verdict = rule_analysis.get("verdict", {})
+        parts.append(f"【规则分析】\n- 用神：{yong_shen}\n- 旺衰：{prosperity}")
+        if verdict:
+            parts.append(
+                f"- 综合判断：{verdict.get('overall', '')}\n- 趋势：{verdict.get('trend', '')}"
+            )
+
+    # RAG上下文
+    if rag_context:
+        rag_text = "\n".join(f"  · {entry}" for entry in rag_context)
+        parts.append(f"【易经原文参考】\n{rag_text}")
+
+    parts.append("请根据以上信息，为用户生成一段通俗易懂的卦象解释。要结合用户的具体问题，给出实用的建议。")
+
+    return "\n\n".join(parts)
+
+
+def _generate_fallback_interpretation(hexagram_data: dict, user_query: str) -> str:
+    """降级解释（无LLM时使用）"""
+    name = hexagram_data.get("name", "此卦")
+    judgment = hexagram_data.get("judgment", "")
+
+    if judgment:
+        return (
+            f"【{name}】{judgment}\n\n"
+            "根据卦象分析，建议您审时度势，顺应变化。"
+            "具体的AI深度解释需要配置LLM服务。"
+        )
+    return (
+        f"卦象【{name}】已获取。"
+        "详细的AI解释需要配置LLM API密钥（设置环境变量 DEEPSEEK_API_KEY）。"
+    )
 
 
 def _evolution_simulate(state: AgentState) -> dict:

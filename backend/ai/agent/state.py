@@ -24,7 +24,7 @@ class AgentState(TypedDict, total=False):
     rule_analysis: dict | None               # 规则分析结果
 
     # RAG检索结果
-    rag_context: str | None                  # 融合后的上下文
+    rag_context: list[str] | None            # RAG检索到的知识条目
 
     # 中间结果
     interpretation_draft: str                # AI解释草稿

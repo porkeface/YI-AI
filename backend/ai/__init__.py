@@ -61,6 +61,40 @@ from ai.memory.types import (
     MemoryRecall,
     UserMemoryProfile,
 )
+from ai.observation import (
+    ObservationAgent,
+    PatternDetector,
+    AnomalyDetector,
+    TrendReporter,
+    ObservationConfig,
+)
+from ai.plugins import (
+    PluginRegistry,
+    PluginManager,
+    PluginType,
+    HookPoint,
+    PluginInfo,
+)
+from ai.i18n import (
+    Translator,
+    PromptTemplateManager,
+    Language,
+    load_builtin_templates,
+)
+from ai.api_platform import (
+    APIKeyManager,
+    APIRateLimiter,
+    APIPermission,
+)
+from ai.analytics import (
+    EventTracker,
+    EventType,
+)
+from ai.enterprise import (
+    TenantManager,
+    Role,
+    Permission,
+)
 
 __all__ = [
     # 客户端
@@ -139,4 +173,32 @@ __all__ = [
     "UserChangeModel",
     "MemoryRecall",
     "UserMemoryProfile",
+    # 观察Agent
+    "ObservationAgent",
+    "PatternDetector",
+    "AnomalyDetector",
+    "TrendReporter",
+    "ObservationConfig",
+    # 插件系统
+    "PluginRegistry",
+    "PluginManager",
+    "PluginType",
+    "HookPoint",
+    "PluginInfo",
+    # 国际化
+    "Translator",
+    "PromptTemplateManager",
+    "Language",
+    "load_builtin_templates",
+    # API平台
+    "APIKeyManager",
+    "APIRateLimiter",
+    "APIPermission",
+    # 数据分析
+    "EventTracker",
+    "EventType",
+    # 企业版
+    "TenantManager",
+    "Role",
+    "Permission",
 ]

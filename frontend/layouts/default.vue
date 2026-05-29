@@ -44,6 +44,41 @@
             >
               Agent
             </NuxtLink>
+            <NuxtLink
+              to="/reasoning"
+              class="text-gold-500/80 hover:text-gold-400 transition-colors duration-200 text-sm font-medium"
+              active-class="text-gold-400"
+            >
+              推理
+            </NuxtLink>
+            <NuxtLink
+              to="/qimen"
+              class="text-gold-500/80 hover:text-gold-400 transition-colors duration-200 text-sm font-medium"
+              active-class="text-gold-400"
+            >
+              奇门
+            </NuxtLink>
+            <NuxtLink
+              to="/ziwei"
+              class="text-gold-500/80 hover:text-gold-400 transition-colors duration-200 text-sm font-medium"
+              active-class="text-gold-400"
+            >
+              紫微
+            </NuxtLink>
+            <NuxtLink
+              to="/observation"
+              class="text-gold-500/80 hover:text-gold-400 transition-colors duration-200 text-sm font-medium"
+              active-class="text-gold-400"
+            >
+              观察
+            </NuxtLink>
+            <NuxtLink
+              to="/analytics"
+              class="text-gold-500/80 hover:text-gold-400 transition-colors duration-200 text-sm font-medium"
+              active-class="text-gold-400"
+            >
+              分析
+            </NuxtLink>
             <ClientOnly>
               <ThemeToggle />
               <LanguageSwitcher />

@@ -21,6 +21,11 @@ from api.ws_divination import router as ws_router
 from api.qimen import router as qimen_router
 from api.ziwei import router as ziwei_router
 from api.reasoning import router as reasoning_router
+from api.observation import router as observation_router
+from api.plugins import router as plugins_router
+from api.api_platform import router as api_platform_router
+from api.enterprise import router as enterprise_router
+from api.analytics import router as analytics_router
 from db.database import init_db
 
 app = FastAPI(
@@ -53,6 +58,11 @@ app.include_router(ws_router)
 app.include_router(qimen_router)
 app.include_router(ziwei_router)
 app.include_router(reasoning_router)
+app.include_router(observation_router)
+app.include_router(plugins_router)
+app.include_router(api_platform_router)
+app.include_router(enterprise_router)
+app.include_router(analytics_router)
 
 
 @app.on_event("startup")

@@ -54,10 +54,10 @@ export function useApi() {
   /**
    * 起卦请求
    */
-  async function submitDivination(request: DivinationRequest): Promise<DivinationResponse> {
-    const { data, error } = await request<DivinationResponse>('/api/divination', {
+  async function submitDivination(divinationRequest: DivinationRequest): Promise<DivinationResponse> {
+    const { data, error } = await request<DivinationResponse>('/api/divination/', {
       method: 'POST',
-      body: request,
+      body: divinationRequest,
     })
 
     if (error) {

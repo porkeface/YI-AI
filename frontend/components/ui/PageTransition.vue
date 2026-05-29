@@ -1,6 +1,8 @@
 <template>
   <Transition name="fade" mode="out-in">
-    <slot />
+    <div>
+      <slot />
+    </div>
   </Transition>
 </template>
 

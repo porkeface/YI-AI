@@ -14,6 +14,7 @@
         <InputField
           v-model="store.question"
           placeholder="请输入您想问的事情..."
+          label="请输入您的问题"
         />
       </div>
 
@@ -85,12 +86,14 @@
             v-model="number1"
             type="number"
             placeholder="第一个数字"
+            label="第一个数字"
             class="flex-1"
           />
           <InputField
             v-model="number2"
             type="number"
             placeholder="第二个数字"
+            label="第二个数字"
             class="flex-1"
           />
         </div>

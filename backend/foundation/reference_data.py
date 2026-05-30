@@ -17,8 +17,13 @@ _DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 def _load_json(filename: str) -> Any:
     """加载JSON数据文件"""
     path = os.path.join(_DATA_DIR, filename)
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"数据文件不存在: {path}") from None
+    except json.JSONDecodeError as e:
+        raise ValueError(f"数据文件格式错误 {filename}: {e}") from e
 
 
 @lru_cache(maxsize=1)
@@ -35,6 +40,12 @@ def get_line_texts() -> list[dict]:
         - image_text: str (小象辞)
     """
     return _load_json("line_texts.json")
+
+
+@lru_cache(maxsize=1)
+def _line_text_index() -> dict[tuple[int, int], dict]:
+    """构建 (hexagram_id, position) -> dict 的索引"""
+    return {(e["hexagram_id"], e["position"]): e for e in get_line_texts()}
 
 
 @lru_cache(maxsize=1)
@@ -116,10 +127,7 @@ def get_line_text(hexagram_id: int, position: int) -> dict | None:
     Returns:
         dict with text and image_text, or None if not found
     """
-    for entry in get_line_texts():
-        if entry["hexagram_id"] == hexagram_id and entry["position"] == position:
-            return entry
-    return None
+    return _line_text_index().get((hexagram_id, position))
 
 
 def get_tuan_text(hexagram_id: int) -> str | None:

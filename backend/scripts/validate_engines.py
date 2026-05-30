@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 import os
+from collections import Counter
 
 # 添加项目根目录到 path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -26,29 +27,55 @@ from foundation.reference_data import (
     get_najia_for_trigram,
 )
 
+# 地支五行对应（共享常量）
+BRANCH_ELEMENT = {
+    "子": "水", "丑": "土", "寅": "木", "卯": "木",
+    "辰": "土", "巳": "火", "午": "火", "未": "土",
+    "申": "金", "酉": "金", "戌": "土", "亥": "水",
+}
+
+# 宫位五行对应
+PALACE_ELEMENT = {
+    "乾宫": "金", "坤宫": "土", "震宫": "木", "巽宫": "木",
+    "坎宫": "水", "离宫": "火", "艮宫": "土", "兑宫": "金",
+}
+
 
 def validate_najia() -> list[str]:
     """验证纳甲规则"""
     errors = []
     trigrams = ["乾", "坤", "震", "巽", "坎", "离", "艮", "兑"]
 
+    # 天干五行对应
+    STEM_ELEMENT = {
+        "甲": "木", "乙": "木", "丙": "火", "丁": "火",
+        "戊": "土", "己": "土", "庚": "金", "辛": "金",
+        "壬": "水", "癸": "水",
+    }
+
     for trigram in trigrams:
-        # 内卦
         lower_rules = get_najia_for_trigram(trigram, is_upper=False)
-        # 外卦
         upper_rules = get_najia_for_trigram(trigram, is_upper=True)
 
         for rules, is_upper in [(lower_rules, False), (upper_rules, True)]:
             for rule in rules:
-                # 验证干支组合是否有效
                 stem = rule["heavenly_stem"]
                 branch = rule["earthly_branch"]
-                valid_stems = "甲乙丙丁戊己庚辛壬癸"
-                valid_branches = "子丑寅卯辰巳午未申酉戌亥"
-                if stem not in valid_stems:
+                element = rule["element"]
+
+                # 验证天干地支是否合法
+                if stem not in STEM_ELEMENT:
                     errors.append(f"纳甲: {trigram}{'外' if is_upper else '内'}爻{rule['position']} 天干无效: {stem}")
-                if branch not in valid_branches:
+                if branch not in BRANCH_ELEMENT:
                     errors.append(f"纳甲: {trigram}{'外' if is_upper else '内'}爻{rule['position']} 地支无效: {branch}")
+
+                # 验证五行与地支对应
+                expected_element = BRANCH_ELEMENT.get(branch)
+                if expected_element and element != expected_element:
+                    errors.append(
+                        f"纳甲: {trigram}{'外' if is_upper else '内'}爻{rule['position']} "
+                        f"地支{branch}应为{expected_element}，实际{element}"
+                    )
 
     return errors
 
@@ -84,7 +111,6 @@ def validate_palace_order() -> list[str]:
     palaces = get_palace_order()
 
     # 验证每个宫有8个卦
-    from collections import Counter
     palace_counts = Counter(p["palace"] for p in palaces)
     for palace, count in palace_counts.items():
         if count != 8:
@@ -95,12 +121,18 @@ def validate_palace_order() -> list[str]:
     if len(set(ids)) != 64:
         errors.append(f"宫序: 卦ID有重复，共{len(ids)}个，去重后{len(set(ids))}个")
 
-    # 验证世应位置合理
+    # 验证世应位置和宫位五行
     for p in palaces:
         shi = p["shi_position"]
         ying = p["ying_position"]
         if not (1 <= shi <= 6) or not (1 <= ying <= 6):
             errors.append(f"宫序: {p['hexagram_name']} 世应位置异常: 世{shi} 应{ying}")
+
+        expected_element = PALACE_ELEMENT.get(p["palace"])
+        if expected_element and p["palace_element"] != expected_element:
+            errors.append(
+                f"宫序: {p['hexagram_name']} 宫位五行应为{expected_element}，实际{p['palace_element']}"
+            )
 
     return errors
 
@@ -140,6 +172,17 @@ def validate_hexagram_enrichment() -> list[str]:
             gz_list = [l.gan_zhi for l in enriched.lines]
             if len(set(gz_list)) < 6:
                 errors.append(f"卦{hid} {enriched.name}: 干支有重复 {gz_list}")
+
+            # 验证干支五行与爻五行一致
+            for line in enriched.lines:
+                if len(line.gan_zhi) >= 2:
+                    branch = line.gan_zhi[1]
+                    expected = BRANCH_ELEMENT.get(branch)
+                    if expected and line.element.value != expected:
+                        errors.append(
+                            f"卦{hid} {enriched.name} 爻{line.position}: "
+                            f"干支{line.gan_zhi}地支{branch}应为{expected}，爻五行{line.element.value}"
+                        )
 
             # 验证世应位置合理
             shi_count = sum(1 for l in enriched.lines if l.is_shi)

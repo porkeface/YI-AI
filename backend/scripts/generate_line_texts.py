@@ -546,25 +546,7 @@ def generate():
     yao_names_yang = ["初九", "九二", "九三", "九四", "九五", "上九"]
     yao_names_yin = ["初六", "六二", "六三", "六四", "六五", "上六"]
 
-    # 确定每卦各爻的阴阳
-    # 从 hexagram_data 的 binary 编码推导
-    # binary: 从下到上, 0=阴, 1=阳
-    hexagram_yin_yang = {}
-    for hid, lines in LINE_TEXTS.items():
-        # 通过爻辞名称判断阴阳
-        yin_yangs = []
-        for text, _ in lines:
-            if any(name in text for name in ["初九", "九二", "九三", "九四", "九五", "上九"]):
-                yin_yangs.append("yang")
-            elif any(name in text for name in ["初六", "六二", "六三", "六四", "六五", "上六"]):
-                yin_yangs.append("yin")
-            else:
-                # 通过爻辞开头判断
-                yin_yangs.append("yang")  # 默认
-        hexagram_yin_yang[hid] = yin_yangs
-
-    # 用标准的64卦阴阳表
-    # binary从下到上: 0=阴, 1=阳
+    # 标准64卦阴阳表 (binary从下到上: 0=阴, 1=阳)
     STANDARD_YY = {
         1: [1,1,1,1,1,1],  # 乾
         2: [0,0,0,0,0,0],  # 坤
@@ -634,7 +616,11 @@ def generate():
 
     for hid in range(1, 65):
         lines = LINE_TEXTS.get(hid, [])
-        yy = STANDARD_YY.get(hid, [1,1,1,1,1,1])
+        if len(lines) != 6:
+            raise ValueError(f"卦{hid} 应有6条爻辞，实际{len(lines)}条")
+        yy = STANDARD_YY.get(hid)
+        if yy is None or len(yy) != 6:
+            raise ValueError(f"卦{hid} 缺少阴阳数据")
         for pos in range(6):
             text, image = lines[pos]
             yao_name = yao_names_yang[pos] if yy[pos] == 1 else yao_names_yin[pos]

@@ -1,6 +1,6 @@
 [project]
 name = "yiai"
-version = "0.1.0"
+version = "0.5.0"
 description = "YI-AI 易学AI系统 - 东方变化学AI操作系统"
 requires-python = ">=3.12"
 dependencies = [

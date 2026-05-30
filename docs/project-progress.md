@@ -1,7 +1,7 @@
 # YI-AI 项目进度报告
 
 > 最后更新：2026-05-30
-> 版本：v0.4.0
+> 版本：v0.5.0
 
 ---
 
@@ -104,6 +104,8 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 
 ## 六、Phase 3.5 - 平台化（已完成）
 
+> 完成时间：2026-05-30
+
 ### 里程碑
 
 | 里程碑 | 状态 | 交付物 |
@@ -114,6 +116,21 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 | M3.5.4 多语言i18n | ✅ | Translator（zh-CN/en/ja/ko）、PromptTemplateManager |
 | M3.5.5 数据分析 | ✅ | EventTracker（事件追踪、仪表盘、漏斗分析）、/api/analytics/* |
 | M3.5.6 v3.0发布 | ✅ | 平台版本 |
+
+### 实现模块
+
+| 模块 | 文件 | 核心类 | 说明 |
+|------|------|--------|------|
+| 插件系统 | `ai/plugins/` (3文件) | PluginRegistry, PluginManager | Protocol协议、钩子点、动态加载 |
+| 开放API | `ai/api_platform/` (3文件) | APIKeyManager, APIRateLimiter | SHA-256密钥哈希、滑动窗口限流 |
+| 企业版 | `ai/enterprise/` (2文件) | TenantManager | 多租户隔离、RBAC(OWNER/ADMIN/ANALYST/VIEWER)、配额管理 |
+| i18n | `ai/i18n/` (3文件) | Translator, PromptTemplateManager | 4语言(zh-CN/en/ja/ko)、CJK/假名/谚文检测 |
+| 数据分析 | `ai/analytics/` (2文件) | EventTracker | 9种事件类型、仪表盘、漏斗分析 |
+| 自动观察 | `ai/observation/` (5文件) | ObservationAgent, PatternDetector, AnomalyDetector, TrendReporter | 模式检测、异常检测、趋势报告 |
+
+### 测试覆盖
+
+新增 123 个测试：test_plugins(18), test_observation(32), test_i18n(16), test_api_platform(16), test_analytics(11), test_enterprise(15), test_phase3_batch2(15)
 
 ---
 
@@ -256,9 +273,10 @@ python backend/scripts/index_knowledge.py
 ## 十一、代码统计
 
 ### 后端（Python）
-- 总文件数：~100个
-- 核心模块：foundation(13), rule_engine(6), ai(45+), api(17), adapters(3), db(3)
-- 测试文件：14个
+- 总文件数：~110个
+- 核心模块：foundation(13), rule_engine(6), ai(63), api(17), adapters(3), db(3)
+- AI子模块：18个（含6个Phase 3.5新增：plugins, api_platform, i18n, analytics, enterprise, observation）
+- 测试文件：14个（409个测试用例）
 - 脚本：scripts/index_knowledge.py
 
 ### 前端（Vue/TypeScript）

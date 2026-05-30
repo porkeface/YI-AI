@@ -91,16 +91,14 @@ class CacheMiddleware(BaseHTTPMiddleware):
         return response
 
     def _generate_etag(self, response: Response) -> str:
-        """生成 ETag"""
-        # 简化实现：基于时间戳和内容哈希
+        """生成 ETag（纯内容哈希，无时间戳）"""
         content = ""
         if hasattr(response, "body"):
             content = str(response.body)
         elif hasattr(response, "content"):
             content = str(response.content)
 
-        hash_input = f"{time.time():.0f}:{content[:1000]}"
-        return f'"{hashlib.md5(hash_input.encode()).hexdigest()[:16]}"'
+        return f'"{hashlib.sha256(content[:4096].encode()).hexdigest()[:16]}"'
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -167,7 +165,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return response
 
     def _cleanup_stale_entries(self, now: float) -> None:
-        """清理所有窗口为空的 IP 条目，防止内存泄漏"""
-        stale_ips = [ip for ip, timestamps in self._windows.items() if not timestamps]
+        """清理过期 IP 条目，防止内存泄漏"""
+        window_start = now - self.window_seconds
+        stale_ips = [
+            ip for ip, timestamps in self._windows.items()
+            if not timestamps or all(t <= window_start for t in timestamps)
+        ]
         for ip in stale_ips:
             del self._windows[ip]

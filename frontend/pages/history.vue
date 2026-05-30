@@ -92,6 +92,10 @@ import { ref, onMounted } from 'vue'
 import type { HistoryRecord } from '~/types/hexagram'
 import { useHistory } from '~/composables/useHistory'
 
+definePageMeta({
+  middleware: 'auth',
+})
+
 const historyApi = useHistory()
 
 const records = ref<HistoryRecord[]>([])
@@ -131,15 +135,7 @@ function fortuneVariant(fortune: string) {
   return 'warning'
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+import { formatDate } from '~/utils/format'
 
 onMounted(() => fetchHistory(1))
 </script>

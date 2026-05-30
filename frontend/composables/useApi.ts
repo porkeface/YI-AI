@@ -28,6 +28,15 @@ export function useApi() {
       if (options.body) {
         headers['Content-Type'] = 'application/json'
       }
+
+      // 自动附加认证 token
+      if (import.meta.client) {
+        const token = localStorage.getItem('auth_token')
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+      }
+
       const response = await fetch(url.toString(), {
         method: options.method || 'GET',
         headers,
@@ -38,14 +47,13 @@ export function useApi() {
         const errorData = await response.json().catch(() => ({}))
         return {
           data: null,
-          error: errorData.message || `请求失败: ${response.status}`,
+          error: errorData.message || errorData.detail || `请求失败: ${response.status}`,
         }
       }
 
       const data = await response.json()
       return { data, error: null }
     } catch (err) {
-      console.error('API请求错误:', err)
       return {
         data: null,
         error: err instanceof Error ? err.message : '网络请求失败',

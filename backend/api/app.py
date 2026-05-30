@@ -41,8 +41,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
 
 # 注册路由
@@ -68,3 +68,21 @@ app.include_router(analytics_router)
 @app.on_event("startup")
 async def startup():
     await init_db()
+    # 自动迁移：为旧表添加user_id列（如果不存在）
+    import sqlalchemy
+    from db.database import engine as _db_engine
+    try:
+        async with _db_engine.begin() as conn:
+            result = await conn.execute(
+                sqlalchemy.text("PRAGMA table_info(divination_records)")
+            )
+            columns = [row[1] for row in result.fetchall()]
+            if "user_id" not in columns:
+                await conn.execute(
+                    sqlalchemy.text("ALTER TABLE divination_records ADD COLUMN user_id VARCHAR(36) REFERENCES users(id)")
+                )
+                await conn.execute(
+                    sqlalchemy.text("CREATE INDEX IF NOT EXISTS ix_divination_records_user_id ON divination_records(user_id)")
+                )
+    except Exception:
+        pass  # 新库直接创建，无需迁移

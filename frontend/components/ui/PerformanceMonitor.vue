@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const showMetrics = ref(false)
 
@@ -27,6 +27,8 @@ const metrics = ref({
   lcp: 0,
   cls: 0,
 })
+
+const observers: PerformanceObserver[] = []
 
 onMounted(() => {
   // 监听FCP
@@ -38,8 +40,8 @@ onMounted(() => {
       }
     })
   })
-
   observer.observe({ entryTypes: ['paint'] })
+  observers.push(observer)
 
   // 监听LCP
   const lcpObserver = new PerformanceObserver((list) => {
@@ -49,8 +51,8 @@ onMounted(() => {
       metrics.value.lcp = Math.round(lastEntry.startTime)
     }
   })
-
   lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] })
+  observers.push(lcpObserver)
 
   // 监听CLS
   const clsObserver = new PerformanceObserver((list) => {
@@ -62,7 +64,11 @@ onMounted(() => {
     })
     metrics.value.cls = Math.round(clsValue * 1000) / 1000
   })
-
   clsObserver.observe({ entryTypes: ['layout-shift'] })
+  observers.push(clsObserver)
+})
+
+onUnmounted(() => {
+  observers.forEach(obs => obs.disconnect())
 })
 </script>

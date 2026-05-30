@@ -220,13 +220,16 @@ function intentLabel(intent: string): string {
 </template>
 
 <script lang="ts">
-// 格式化消息（简单Markdown）
+import DOMPurify from 'dompurify'
+
+// 格式化消息（简单Markdown + XSS消毒）
 function formatMessage(content: string): string {
-  return content
+  const raw = content
     .replace(/\n/g, '<br>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/`(.*?)`/g, '<code>$1</code>')
+  return DOMPurify.sanitize(raw)
 }
 </script>
 

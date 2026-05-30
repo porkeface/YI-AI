@@ -49,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from 'vue'
+import { ref, watch, nextTick, computed, onUnmounted } from 'vue'
 
 interface Props {
   text?: string | null
@@ -140,6 +140,13 @@ watch(() => props.isStreaming, (streaming) => {
     // 快速补齐剩余字符
     pendingChars = ''
     internalText.value = props.text
+  }
+})
+
+onUnmounted(() => {
+  if (streamTimer) {
+    clearInterval(streamTimer)
+    streamTimer = null
   }
 })
 </script>

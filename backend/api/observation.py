@@ -6,11 +6,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ai.observation.agent import ObservationAgent
 from ai.observation.types import ReportPeriod
+from api.security import get_current_user
+from db.models import User
 
 router = APIRouter(prefix="/api/observation", tags=["observation"])
 
@@ -93,16 +95,16 @@ async def generate_trend_report(request: TrendReportRequest):
 
 
 @router.post("/observe")
-async def full_observe(user_id: str):
+async def full_observe(current_user: User = Depends(get_current_user)):
     """执行完整观察分析（模式+趋势+异常）
 
     MVP阶段：返回提示信息，后续接入记忆数据后启用。
     """
     # TODO: 从 MemoryEngine 获取用户记忆
-    # memories = memory_engine.get_memories(user_id)
-    # observation = ObservationAgent.observe(user_id, memories)
+    # memories = memory_engine.get_memories(current_user.id)
+    # observation = ObservationAgent.observe(current_user.id, memories)
     return {
-        "user_id": user_id,
+        "user_id": current_user.id,
         "observation": None,
         "message": "完整观察需要用户历史数据，等待 MemoryEngine 接入",
     }

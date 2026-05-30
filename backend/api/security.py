@@ -8,11 +8,11 @@ from __future__ import annotations
 import os
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import structlog
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,23 +23,26 @@ logger = structlog.get_logger()
 
 # ── 配置 ────────────────────────────────────────────────
 
-SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "yiai-dev-secret-change-in-production")
+_env_key = os.environ.get("JWT_SECRET_KEY")
+if not _env_key:
+    import secrets as _secrets
+    _env_key = _secrets.token_urlsafe(48)
+    logger.warning("jwt_secret_generated", detail="JWT_SECRET_KEY未设置，已生成临时密钥（重启后失效）")
+SECRET_KEY = _env_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("JWT_EXPIRE_MINUTES", "1440"))  # 24小时
 
 # ── 密码哈希 ────────────────────────────────────────────
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(password: str) -> str:
     """对密码进行bcrypt哈希"""
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """验证密码与哈希是否匹配"""
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
 # ── JWT 令牌 ────────────────────────────────────────────

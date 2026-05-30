@@ -283,8 +283,8 @@ async function saveToHistory() {
       changedHexagramData: store.changedHexagram,
       analysisData: store.analysis,
     })
-  } catch {
-    // 保存失败不影响用户体验
+  } catch (err) {
+    console.warn('保存历史记录失败:', err)
   }
 }
 

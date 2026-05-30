@@ -77,10 +77,10 @@ export default defineNuxtConfig({
           },
         },
         {
-          urlPattern: /\/api\/.*$/i,
+          urlPattern: /\/api\/(hexagram|graph|divination\/methods).*$/i,
           handler: 'NetworkFirst',
           options: {
-            cacheName: 'api-cache',
+            cacheName: 'api-cache-public',
             expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 },
             cacheableResponse: { statuses: [0, 200] },
           },
@@ -96,7 +96,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      apiBase: (globalThis as any).process?.env?.API_BASE || 'http://localhost:8000',
+      apiBase: process.env.API_BASE || 'http://localhost:8000',
     },
   },
   // 性能优化

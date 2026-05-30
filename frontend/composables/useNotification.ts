@@ -27,7 +27,7 @@ export function useNotification() {
       duration,
     }
 
-    notifications.value.push(notification)
+    notifications.value = [...notifications.value, notification]
 
     return id
   }
@@ -49,10 +49,7 @@ export function useNotification() {
   }
 
   function remove(id: number) {
-    const index = notifications.value.findIndex(n => n.id === id)
-    if (index !== -1) {
-      notifications.value.splice(index, 1)
-    }
+    notifications.value = notifications.value.filter(n => n.id !== id)
   }
 
   function clear() {

@@ -24,10 +24,9 @@
 
 <style>
 /* 全局样式 */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
 
 body {
-  font-family: 'Noto Serif SC', 'Source Han Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Noto Serif', 'Songti SC', 'SimSun', serif;
   background-color: #121212;
   color: #d4a017;
   min-height: 100vh;

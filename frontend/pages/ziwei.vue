@@ -144,33 +144,33 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">年柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.chart.yearGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.chart?.yearGanZhi }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">月柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.chart.monthGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.chart?.monthGanZhi }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">日柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.chart.dayGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.chart?.dayGanZhi }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">时柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.chart.hourGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.chart?.hourGanZhi }}</p>
               </div>
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
               <span class="px-3 py-1 rounded-md bg-gold-500/10 text-gold-500/80 text-xs">
-                {{ ziwei.chart.gender === 'male' ? '男' : '女' }}命
+                {{ ziwei.chart?.gender === 'male' ? '男' : '女' }}命
               </span>
               <span class="px-3 py-1 rounded-md bg-gold-500/10 text-gold-500/80 text-xs">
-                {{ ziwei.chart.wuXingJu }}
+                {{ ziwei.chart?.wuXingJu }}
               </span>
               <span class="px-3 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs">
-                命宫: {{ ziwei.chart.mingPalace }}
+                命宫: {{ ziwei.chart?.mingPalace }}
               </span>
               <span class="px-3 py-1 rounded-md bg-purple-500/10 text-purple-400 text-xs">
-                身宫: {{ ziwei.chart.shenPalace }}
+                身宫: {{ ziwei.chart?.shenPalace }}
               </span>
             </div>
           </div>
@@ -187,7 +187,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('巳')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('巳')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('巳')?.brightness || '' }}
@@ -202,7 +202,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('午')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('午')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('午')?.brightness || '' }}
@@ -217,7 +217,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('未')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('未')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('未')?.brightness || '' }}
@@ -232,7 +232,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('申')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('申')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('申')?.brightness || '' }}
@@ -247,7 +247,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('辰')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('辰')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('辰')?.brightness || '' }}
@@ -256,9 +256,9 @@
               </div>
               <!-- 中宫 -->
               <div class="col-span-2 p-3 rounded-lg border border-gold-500/30 bg-gold-500/10 min-h-[100px] flex flex-col justify-center items-center">
-                <p class="text-gold-500/80 text-sm font-chinese mb-2">{{ ziwei.chart.wuXingJu }}</p>
-                <p class="text-gold-500/50 text-xs">{{ ziwei.chart.gender === 'male' ? '男' : '女' }}命</p>
-                <p class="text-gold-500/50 text-xs mt-1">命宫: {{ ziwei.chart.mingPalace }}</p>
+                <p class="text-gold-500/80 text-sm font-chinese mb-2">{{ ziwei.chart?.wuXingJu }}</p>
+                <p class="text-gold-500/50 text-xs">{{ ziwei.chart?.gender === 'male' ? '男' : '女' }}命</p>
+                <p class="text-gold-500/50 text-xs mt-1">命宫: {{ ziwei.chart?.mingPalace }}</p>
               </div>
               <!-- 酉宫 -->
               <div class="p-3 rounded-lg border border-gold-500/20 bg-ink-800/50 min-h-[100px]">
@@ -268,7 +268,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('酉')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('酉')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('酉')?.brightness || '' }}
@@ -283,7 +283,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('卯')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('卯')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('卯')?.brightness || '' }}
@@ -298,7 +298,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('戌')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('戌')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('戌')?.brightness || '' }}
@@ -313,7 +313,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('亥')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('亥')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('亥')?.brightness || '' }}
@@ -328,7 +328,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('寅')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('寅')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('寅')?.brightness || '' }}
@@ -343,7 +343,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('丑')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('丑')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('丑')?.brightness || '' }}
@@ -358,7 +358,7 @@
                 </div>
                 <div class="space-y-1">
                   <p class="text-gold-500/80 text-xs font-chinese truncate">
-                    {{ getPalaceByPosition('子')?.mainStars.join(' ') || '' }}
+                    {{ getPalaceByPosition('子')?.mainStars?.join(' ') || '' }}
                   </p>
                   <p class="text-gold-500/60 text-xs truncate">
                     {{ getPalaceByPosition('子')?.brightness || '' }}
@@ -386,21 +386,21 @@
                 </thead>
                 <tbody>
                   <tr
-                    v-for="palace in ziwei.chart.palaces"
+                    v-for="palace in ziwei.chart?.palaces ?? []"
                     :key="palace.palace"
                     class="border-b border-gold-500/10 hover:bg-gold-500/5"
                   >
                     <td class="py-3 px-3 text-gold-400 text-sm font-chinese">{{ palace.palace }}</td>
                     <td class="py-3 px-3 text-gold-500/80 text-sm font-chinese">{{ palace.ganZhi }}</td>
                     <td class="py-3 px-3 text-gold-500/80 text-sm font-chinese">
-                      {{ palace.mainStars.join(', ') || '-' }}
+                      {{ palace.mainStars?.join(', ') || '-' }}
                     </td>
                     <td class="py-3 px-3 text-gold-500/80 text-sm font-chinese">
-                      {{ palace.auxStars.join(', ') || '-' }}
+                      {{ palace.auxStars?.join(', ') || '-' }}
                     </td>
                     <td class="py-3 px-3 text-gold-500/80 text-sm">{{ palace.brightness }}</td>
                     <td class="py-3 px-3 text-gold-500/80 text-sm font-chinese">
-                      {{ palace.huaStars.join(', ') || '-' }}
+                      {{ palace.huaStars?.join(', ') || '-' }}
                     </td>
                     <td class="py-3 px-3">
                       <span
@@ -435,11 +435,11 @@
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30">
                 <p class="text-gold-500/50 text-xs mb-1">主星</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.analysis.mainStars.join(', ') }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.analysis?.mainStars?.join(', ') }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30">
                 <p class="text-gold-500/50 text-xs mb-1">化曜影响</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.analysis.huaInfluence.join(', ') || '无' }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.analysis?.huaInfluence?.join(', ') || '无' }}</p>
               </div>
             </div>
           </div>
@@ -453,19 +453,19 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">总体</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.analysis.verdict.overall }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.analysis?.verdict?.overall }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">力量</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.analysis.verdict.strength }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.analysis?.verdict?.strength }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">趋势</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.analysis.verdict.trend }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ ziwei.analysis?.verdict?.trend }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">置信度</p>
-                <p class="text-gold-400 text-lg">{{ (ziwei.analysis.verdict.confidence * 100).toFixed(1) }}%</p>
+                <p class="text-gold-400 text-lg">{{ (ziwei.analysis?.verdict?.confidence * 100).toFixed(1) }}%</p>
               </div>
             </div>
           </div>
@@ -479,10 +479,9 @@
 import { ref, computed } from 'vue'
 import { useZiWei } from '~/composables/useZiWei'
 import { useNotification } from '~/composables/useNotification'
+import { isValidDate } from '~/utils/format'
 
-definePageMeta({
-  middleware: 'auth',
-})
+definePageMeta({})
 
 const ziwei = useZiWei()
 const notification = useNotification()
@@ -496,18 +495,17 @@ const questionType = ref('general')
 const error = ref<string | null>(null)
 
 const canSubmit = computed(() => {
-  return year.value > 0 && month.value > 0 && month.value <= 12 &&
-         day.value > 0 && day.value <= 31 && hour.value >= 0 && hour.value <= 23
+  return year.value > 0 && isValidDate(year.value, month.value, day.value) && hour.value >= 0 && hour.value <= 23
 })
 
 // 地支顺序
 const diZhiOrder = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
 
 function getPalaceByPosition(dizhi: string) {
-  if (!ziwei.chart) return null
+  if (!ziwei.chart?.palaces) return null
   const index = diZhiOrder.indexOf(dizhi)
   if (index === -1) return null
-  return ziwei.chart.palaces[index]
+  return ziwei.chart?.palaces?.[index]
 }
 
 async function handleCreateChart() {

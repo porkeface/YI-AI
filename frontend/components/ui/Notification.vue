@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 interface Props {
   type?: 'success' | 'error' | 'warning' | 'info'
@@ -42,6 +42,7 @@ const emit = defineEmits<{
 }>()
 
 const visible = ref(false)
+let autoCloseTimer: ReturnType<typeof setTimeout> | null = null
 
 const typeClasses = computed(() => {
   switch (props.type) {
@@ -80,9 +81,15 @@ onMounted(() => {
   visible.value = true
 
   if (props.duration > 0) {
-    setTimeout(() => {
+    autoCloseTimer = setTimeout(() => {
       close()
     }, props.duration)
+  }
+})
+
+onUnmounted(() => {
+  if (autoCloseTimer) {
+    clearTimeout(autoCloseTimer)
   }
 })
 </script>

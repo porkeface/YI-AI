@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time as time_module
 from datetime import datetime
 
@@ -42,10 +43,11 @@ router = APIRouter(prefix="/api/divination", tags=["divination"])
 
 _ai_interpreter = None
 _ai_init_attempted = False
+_ai_init_lock = asyncio.Lock()
 
 
-def _get_ai_interpreter():
-    """获取AI解释器单例（懒加载）
+async def _get_ai_interpreter():
+    """获取AI解释器单例（懒加载，async安全）
 
     首次调用时尝试初始化，失败后不再重试。
     未配置API Key时返回None，不影响主流程。
@@ -58,7 +60,11 @@ def _get_ai_interpreter():
     if _ai_init_attempted:
         return _ai_interpreter
 
-    _ai_init_attempted = True
+    async with _ai_init_lock:
+        # 双重检查锁定
+        if _ai_init_attempted:
+            return _ai_interpreter
+        _ai_init_attempted = True
 
     try:
         from ai.config import get_default_config
@@ -631,7 +637,7 @@ async def create_divination(request: DivinationRequest):
 
     # ---- 7. AI解释（可选，失败不影响主流程） ----
     ai_interpretation: str | None = None
-    interpreter = _get_ai_interpreter()
+    interpreter = await _get_ai_interpreter()
     if interpreter is not None:
         try:
             from ai.safety_checker import check_safety

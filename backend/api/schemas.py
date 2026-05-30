@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 class DivinationRequest(BaseModel):
     """起卦请求"""
 
-    question: str = Field(..., description="用户问题")
+    question: str = Field(..., description="用户问题", max_length=2000)
     method: str = Field("time", description="起卦方式: time/number/manual/plum_blossom")
     manual_lines: list[int] | None = Field(
         None, description="手动输入的6个阴阳值(0=阴/1=阳)"

@@ -87,7 +87,10 @@ class Neo4jGraphBackend:
         """添加或更新节点"""
         driver = self._get_driver()
         props = {"id": node.id, "name": node.name, **node.properties}
-        query = f"MERGE (n:{node.node_type.value} {{id: $id}}) SET n += $props"
+        # 验证 node_type 来自枚举，防止注入
+        node_type = node.node_type.value
+        assert node_type in [t.value for t in NodeType], f"Invalid node type: {node_type}"
+        query = f"MERGE (n:{node_type} {{id: $id}}) SET n += $props"
         with driver.session() as session:
             session.run(query, id=node.id, props=props)
 
@@ -95,9 +98,12 @@ class Neo4jGraphBackend:
         """添加或更新边"""
         driver = self._get_driver()
         props = dict(edge.properties)
+        # 验证 relation 来自枚举，防止注入
+        rel_type = edge.relation.value
+        assert rel_type in [r.value for r in RelationType], f"Invalid relation type: {rel_type}"
         query = (
             "MATCH (a {id: $source}), (b {id: $target}) "
-            f"MERGE (a)-[r:{edge.relation.value}]->(b) "
+            f"MERGE (a)-[r:{rel_type}]->(b) "
             "SET r += $props"
         )
         with driver.session() as session:
@@ -125,8 +131,10 @@ class Neo4jGraphBackend:
         """获取邻居节点"""
         driver = self._get_driver()
         if relation:
+            rel_val = relation.value
+            assert rel_val in [r.value for r in RelationType], f"Invalid relation type: {rel_val}"
             query = (
-                f"MATCH (a {{id: $id}})-[r:{relation.value}]-(b) "
+                f"MATCH (a {{id: $id}})-[r:{rel_val}]-(b) "
                 "RETURN b, labels(b) as labels"
             )
         else:
@@ -163,7 +171,12 @@ class Neo4jGraphBackend:
             params["target_id"] = target_id
 
         where = "WHERE " + " AND ".join(conditions) if conditions else ""
-        rel_filter = f":{relation.value}" if relation else ""
+        if relation:
+            rel_val = relation.value
+            assert rel_val in [r.value for r in RelationType], f"Invalid relation type: {rel_val}"
+            rel_filter = f":{rel_val}"
+        else:
+            rel_filter = ""
 
         query = (
             f"MATCH (a)-[r{rel_filter}]->(b) {where} "
@@ -195,7 +208,9 @@ class Neo4jGraphBackend:
     def query_by_type(self, node_type: NodeType) -> tuple[GraphNode, ...]:
         """按类型查询节点"""
         driver = self._get_driver()
-        query = f"MATCH (n:{node_type.value}) RETURN n, labels(n) as labels"
+        nt_val = node_type.value
+        assert nt_val in [t.value for t in NodeType], f"Invalid node type: {nt_val}"
+        query = f"MATCH (n:{nt_val}) RETURN n, labels(n) as labels"
         nodes: list[GraphNode] = []
         with driver.session() as session:
             result = session.run(query)

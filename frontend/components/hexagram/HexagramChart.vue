@@ -144,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { HexagramData } from '~/types/hexagram'
 
 interface Props {
@@ -179,12 +179,20 @@ const yingLine = computed(() => {
 
 // GSAP动画
 const isVisible = ref(false)
+let animTimer: ReturnType<typeof setTimeout> | null = null
 
 onMounted(() => {
   // 延迟触发动画
-  setTimeout(() => {
+  animTimer = setTimeout(() => {
     isVisible.value = true
+    animTimer = null
   }, 100)
+})
+
+onUnmounted(() => {
+  if (animTimer) {
+    clearTimeout(animTimer)
+  }
 })
 </script>
 

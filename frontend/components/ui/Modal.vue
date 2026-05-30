@@ -3,6 +3,10 @@
     <div
       v-if="visible"
       class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="title"
+      @keydown.escape="close"
     >
       <!-- 背景遮罩 -->
       <div
@@ -12,6 +16,7 @@
 
       <!-- 模态框内容 -->
       <div
+        ref="modalContent"
         class="relative w-full p-6 rounded-lg border border-gold-500/30 bg-ink-800 shadow-xl"
         :class="sizeClass"
       >
@@ -21,6 +26,7 @@
           <button
             @click="close"
             class="text-gold-500/60 hover:text-gold-500 transition-colors duration-200"
+            aria-label="关闭"
           >
             ✕
           </button>
@@ -41,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 interface Props {
   visible: boolean
   title: string
@@ -65,8 +71,18 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const modalContent = ref<HTMLElement | null>(null)
+
 function close() {
   emit('update:visible', false)
   emit('close')
 }
+
+// 自动聚焦模态框内容（焦点陷阱）
+watch(() => props.visible, async (val) => {
+  if (val) {
+    await nextTick()
+    modalContent.value?.focus()
+  }
+})
 </script>

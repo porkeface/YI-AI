@@ -1,14 +1,28 @@
 """AI输出安全检查模块
 
 对LLM生成的文本进行安全过滤，防止敏感或不当内容输出到前端。
-MVP阶段使用关键词匹配，后续可升级为更智能的分类模型。
+MVP阶段使用关键词匹配+文本归一化，后续可升级为更智能的分类模型。
 """
 
 from __future__ import annotations
 
 import logging
+import re
+import unicodedata
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_text(text: str) -> str:
+    """归一化文本：去除空白/零宽字符、Unicode归一化、全角转半角"""
+    # 去除零宽字符和各种不可见分隔符
+    text = re.sub(r"[​-‏ - ⁠-⁩﻿]", "", text)
+    # Unicode NFKC归一化（全角→半角，兼容字符→标准形态）
+    text = unicodedata.normalize("NFKC", text)
+    # 去除所有空白字符（防止"自 杀"绕过）
+    text = re.sub(r"\s+", "", text)
+    return text
+
 
 # 敏感关键词分类
 _SENSITIVE_CATEGORIES: dict[str, list[str]] = {
@@ -80,10 +94,13 @@ def check_safety(text: str) -> SafetyCheckResult:
     modified = False
     is_safe = True
 
-    # 1. 敏感关键词检查
+    # 0. 文本归一化（防止空白/Unicode绕过）
+    normalized = _normalize_text(text)
+
+    # 1. 敏感关键词检查（对归一化后的文本检测）
     for category, keywords in _SENSITIVE_CATEGORIES.items():
         for keyword in keywords:
-            if keyword in text:
+            if keyword in normalized:
                 is_safe = False
                 warnings.append(f"包含{category}内容：'{keyword}'")
                 logger.warning(

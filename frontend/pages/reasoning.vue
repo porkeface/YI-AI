@@ -134,19 +134,19 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">初始卦</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ reasoning.result.initialHexagram }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ reasoning.result?.initialHexagram }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">最终卦</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ reasoning.result.finalHexagram }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ reasoning.result?.finalHexagram }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">整体置信度</p>
-                <p class="text-gold-400 text-lg">{{ (reasoning.result.overallConfidence * 100).toFixed(1) }}%</p>
+                <p class="text-gold-400 text-lg">{{ ((reasoning.result?.overallConfidence ?? 0) * 100).toFixed(1) }}%</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">推理步骤</p>
-                <p class="text-gold-400 text-lg">{{ reasoning.result.steps.length }}</p>
+                <p class="text-gold-400 text-lg">{{ reasoning.result?.steps?.length ?? 0 }}</p>
               </div>
             </div>
           </div>
@@ -156,7 +156,7 @@
             <h3 class="text-gold-500 font-medium mb-4">推理链</h3>
             <div class="space-y-4">
               <div
-                v-for="step in reasoning.result.steps"
+                v-for="step in reasoning.result?.steps ?? []"
                 :key="step.stepNumber"
                 class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30"
               >
@@ -186,11 +186,11 @@
           </div>
 
           <!-- 分支点 -->
-          <div v-if="reasoning.result.branchPoints.length > 0" class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
+          <div v-if="(reasoning.result?.branchPoints?.length ?? 0) > 0" class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">关键分支点</h3>
             <div class="space-y-3">
               <div
-                v-for="bp in reasoning.result.branchPoints"
+                v-for="bp in reasoning.result?.branchPoints ?? []"
                 :key="bp.stepNumber"
                 class="p-3 rounded-lg border border-gold-500/10 bg-ink-800/30"
               >
@@ -208,15 +208,15 @@
           <!-- 结论 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">推理结论</h3>
-            <p class="text-gold-500/80 text-sm leading-relaxed">{{ reasoning.result.conclusion }}</p>
+            <p class="text-gold-500/80 text-sm leading-relaxed">{{ reasoning.result?.conclusion }}</p>
           </div>
 
           <!-- 概率分布 -->
-          <div v-if="Object.keys(reasoning.result.probabilityDistribution).length > 0" class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
+          <div v-if="Object.keys(reasoning.result?.probabilityDistribution ?? {}).length > 0" class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">概率分布</h3>
             <div class="space-y-2">
               <div
-                v-for="(prob, outcome) in reasoning.result.probabilityDistribution"
+                v-for="(prob, outcome) in reasoning.result?.probabilityDistribution ?? {}"
                 :key="outcome"
                 class="flex items-center gap-3"
               >
@@ -240,26 +240,26 @@
         enter-from-class="opacity-0 translate-y-8"
         enter-to-class="opacity-100 translate-y-0"
       >
-        <div v-if="reasoning.tree" class="mt-8 space-y-6">
+        <div v-if="reasoning.tree?.topPaths" class="mt-8 space-y-6">
           <!-- 树概览 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">概率树概览</h3>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">最大深度</p>
-                <p class="text-gold-400 text-lg">{{ reasoning.tree.maxDepth }}</p>
+                <p class="text-gold-400 text-lg">{{ reasoning.tree?.maxDepth }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">分支因子</p>
-                <p class="text-gold-400 text-lg">{{ reasoning.tree.branchFactor }}</p>
+                <p class="text-gold-400 text-lg">{{ reasoning.tree?.branchFactor }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">总路径数</p>
-                <p class="text-gold-400 text-lg">{{ reasoning.tree.totalPaths }}</p>
+                <p class="text-gold-400 text-lg">{{ reasoning.tree?.totalPaths }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">期望值</p>
-                <p class="text-gold-400 text-lg">{{ reasoning.tree.expectedValue.toFixed(2) }}</p>
+                <p class="text-gold-400 text-lg">{{ reasoning.tree?.expectedValue?.toFixed(2) }}</p>
               </div>
             </div>
           </div>
@@ -267,12 +267,12 @@
           <!-- 风险评估 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">风险评估</h3>
-            <p class="text-gold-500/80 text-sm leading-relaxed">{{ reasoning.tree.riskAssessment }}</p>
+            <p class="text-gold-500/80 text-sm leading-relaxed">{{ reasoning.tree?.riskAssessment }}</p>
           </div>
 
           <!-- 最优路径 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
-            <h3 class="text-gold-500 font-medium mb-4">最优路径 TOP {{ reasoning.tree.topPaths.length }}</h3>
+            <h3 class="text-gold-500 font-medium mb-4">最优路径 TOP {{ reasoning.tree?.topPaths?.length }}</h3>
             <div class="overflow-x-auto">
               <table class="w-full">
                 <thead>
@@ -286,16 +286,16 @@
                 </thead>
                 <tbody>
                   <tr
-                    v-for="(path, index) in reasoning.tree.topPaths"
+                    v-for="(path, index) in reasoning.tree?.topPaths"
                     :key="index"
                     class="border-b border-gold-500/10 hover:bg-gold-500/5"
                   >
                     <td class="py-3 px-3 text-gold-400 text-sm">{{ index + 1 }}</td>
                     <td class="py-3 px-3 text-gold-500/80 text-sm font-chinese">
-                      {{ path.hexagrams.join(' → ') }}
+                      {{ path.hexagrams?.join(' → ') }}
                     </td>
                     <td class="py-3 px-3 text-gold-500/80 text-sm">{{ (path.probability * 100).toFixed(1) }}%</td>
-                    <td class="py-3 px-3 text-gold-500/80 text-sm">{{ path.score.toFixed(2) }}</td>
+                    <td class="py-3 px-3 text-gold-500/80 text-sm">{{ path.score?.toFixed(2) }}</td>
                     <td class="py-3 px-3">
                       <span
                         :class="[
@@ -324,9 +324,7 @@ import { ref, computed } from 'vue'
 import { useReasoning } from '~/composables/useReasoning'
 import { useNotification } from '~/composables/useNotification'
 
-definePageMeta({
-  middleware: 'auth',
-})
+definePageMeta({})
 
 const reasoning = useReasoning()
 const notification = useNotification()

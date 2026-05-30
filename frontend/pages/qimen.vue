@@ -137,41 +137,41 @@
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">年柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart.yearGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart?.yearGanZhi }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">月柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart.monthGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart?.monthGanZhi }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">日柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart.dayGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart?.dayGanZhi }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">时柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart.hourGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart?.hourGanZhi }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">局数</p>
-                <p class="text-gold-400 text-lg">{{ qimen.chart.ju }}局</p>
+                <p class="text-gold-400 text-lg">{{ qimen.chart?.ju }}局</p>
               </div>
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
               <span class="px-3 py-1 rounded-md bg-gold-500/10 text-gold-500/80 text-xs">
-                {{ qimen.chart.yinYang }}
+                {{ qimen.chart?.yinYang }}
               </span>
               <span class="px-3 py-1 rounded-md bg-gold-500/10 text-gold-500/80 text-xs">
-                {{ qimen.chart.dun }}
+                {{ qimen.chart?.dun }}
               </span>
               <span
-                v-for="kong in qimen.chart.xunKong"
+                v-for="kong in qimen.chart?.xunKong ?? []"
                 :key="kong"
                 class="px-3 py-1 rounded-md bg-red-500/10 text-red-400 text-xs"
               >
                 空亡: {{ kong }}
               </span>
               <span
-                v-for="ma in qimen.chart.maXing"
+                v-for="ma in qimen.chart?.maXing ?? []"
                 :key="ma"
                 class="px-3 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs"
               >
@@ -268,7 +268,7 @@
                 </thead>
                 <tbody>
                   <tr
-                    v-for="palace in qimen.chart.palaceInfo"
+                    v-for="palace in qimen.chart?.palaceInfo ?? []"
                     :key="palace.palace"
                     class="border-b border-gold-500/10 hover:bg-gold-500/5"
                   >
@@ -306,15 +306,15 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30">
                 <p class="text-gold-500/50 text-xs mb-1">用神宫位</p>
-                <p class="text-gold-400 text-lg">{{ qimen.analysis.yongShenPalace }}宫</p>
+                <p class="text-gold-400 text-lg">{{ qimen.analysis?.yongShenPalace }}宫</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30">
                 <p class="text-gold-500/50 text-xs mb-1">用神门</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis.yongShenDoor }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis?.yongShenDoor }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30">
                 <p class="text-gold-500/50 text-xs mb-1">用神星</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis.yongShenStar }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis?.yongShenStar }}</p>
               </div>
             </div>
           </div>
@@ -322,25 +322,25 @@
           <!-- 分析描述 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">分析结果</h3>
-            <p class="text-gold-500/80 text-sm leading-relaxed mb-6">{{ qimen.analysis.description }}</p>
+            <p class="text-gold-500/80 text-sm leading-relaxed mb-6">{{ qimen.analysis?.description }}</p>
 
             <!-- 判定 -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">总体</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis.verdict.overall }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis?.verdict?.overall }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">力量</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis.verdict.strength }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis?.verdict?.strength }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">趋势</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis.verdict.trend }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis?.verdict?.trend }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">置信度</p>
-                <p class="text-gold-400 text-lg">{{ (qimen.analysis.verdict.confidence * 100).toFixed(1) }}%</p>
+                <p class="text-gold-400 text-lg">{{ (qimen.analysis?.verdict?.confidence * 100).toFixed(1) }}%</p>
               </div>
             </div>
           </div>
@@ -354,10 +354,9 @@
 import { ref, computed } from 'vue'
 import { useQiMen } from '~/composables/useQiMen'
 import { useNotification } from '~/composables/useNotification'
+import { isValidDate } from '~/utils/format'
 
-definePageMeta({
-  middleware: 'auth',
-})
+definePageMeta({})
 
 const qimen = useQiMen()
 const notification = useNotification()
@@ -370,12 +369,11 @@ const questionType = ref('general')
 const error = ref<string | null>(null)
 
 const canSubmit = computed(() => {
-  return year.value > 0 && month.value > 0 && month.value <= 12 &&
-         day.value > 0 && day.value <= 31 && hour.value >= 0 && hour.value <= 23
+  return year.value > 0 && isValidDate(year.value, month.value, day.value) && hour.value >= 0 && hour.value <= 23
 })
 
 function getPalace(num: number) {
-  return qimen.chart?.palaceInfo.find(p => p.palace === num)
+  return qimen.chart?.palaceInfo?.find(p => p.palace === num)
 }
 
 async function handleCreateChart() {

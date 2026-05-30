@@ -48,6 +48,11 @@ async function handleRegister() {
               type="text"
               placeholder="3-50个字符，仅字母数字下划线"
               class="auth-input"
+              required
+              minlength="3"
+              maxlength="50"
+              pattern="^[a-zA-Z0-9_]+$"
+              autocomplete="username"
             />
           </div>
 
@@ -58,6 +63,8 @@ async function handleRegister() {
               type="email"
               placeholder="your@email.com"
               class="auth-input"
+              required
+              autocomplete="email"
             />
           </div>
 
@@ -78,6 +85,10 @@ async function handleRegister() {
               type="password"
               placeholder="至少8个字符"
               class="auth-input"
+              required
+              minlength="8"
+              maxlength="128"
+              autocomplete="new-password"
             />
           </div>
 
@@ -88,6 +99,10 @@ async function handleRegister() {
               type="password"
               placeholder="再次输入密码"
               class="auth-input"
+              required
+              minlength="8"
+              maxlength="128"
+              autocomplete="new-password"
             />
           </div>
 

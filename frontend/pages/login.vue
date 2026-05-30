@@ -36,6 +36,10 @@ async function handleLogin() {
               type="text"
               placeholder="请输入用户名"
               class="auth-input"
+              required
+              minlength="3"
+              maxlength="50"
+              autocomplete="username"
             />
           </div>
 
@@ -46,6 +50,10 @@ async function handleLogin() {
               type="password"
               placeholder="请输入密码"
               class="auth-input"
+              required
+              minlength="8"
+              maxlength="128"
+              autocomplete="current-password"
             />
           </div>
 

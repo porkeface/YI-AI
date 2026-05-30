@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import math
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +15,9 @@ from api.schemas import (
     HistoryRecordResponse,
     HistorySaveRequest,
 )
+from api.security import get_current_user
 from db.database import get_db
+from db.models import User
 from models.divination_record import DivinationRecord
 
 router = APIRouter(prefix="/api/history", tags=["history"])
@@ -38,9 +40,14 @@ def _record_to_response(record: DivinationRecord) -> HistoryRecordResponse:
 
 
 @router.post("/")
-async def save_history(request: HistorySaveRequest, db: AsyncSession = Depends(get_db)):
-    """保存占卜记录"""
+async def save_history(
+    request: HistorySaveRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """保存占卜记录（需要登录）"""
     record = DivinationRecord(
+        user_id=current_user.id,
         question=request.question,
         method=request.method,
         hexagram_data=json.dumps(request.hexagram_data, ensure_ascii=False),
@@ -62,14 +69,18 @@ async def list_history(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """获取历史记录列表"""
-    count_result = await db.execute(select(func.count(DivinationRecord.id)))
+    """获取当前用户的历史记录列表"""
+    count_result = await db.execute(
+        select(func.count(DivinationRecord.id)).where(DivinationRecord.user_id == current_user.id)
+    )
     total = count_result.scalar() or 0
 
     offset = (page - 1) * limit
     result = await db.execute(
         select(DivinationRecord)
+        .where(DivinationRecord.user_id == current_user.id)
         .order_by(DivinationRecord.created_at.desc())
         .offset(offset)
         .limit(limit)
@@ -89,26 +100,40 @@ async def list_history(
 
 
 @router.get("/{record_id}")
-async def get_history_record(record_id: int, db: AsyncSession = Depends(get_db)):
-    """获取单条历史记录"""
+async def get_history_record(
+    record_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """获取单条历史记录（仅限本人）"""
     result = await db.execute(
-        select(DivinationRecord).where(DivinationRecord.id == record_id)
+        select(DivinationRecord).where(
+            DivinationRecord.id == record_id,
+            DivinationRecord.user_id == current_user.id,
+        )
     )
     record = result.scalar_one_or_none()
     if not record:
-        return ApiResponse(success=False, error="记录不存在")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="记录不存在")
     return ApiResponse(success=True, data=_record_to_response(record).model_dump())
 
 
 @router.delete("/{record_id}")
-async def delete_history_record(record_id: int, db: AsyncSession = Depends(get_db)):
-    """删除历史记录"""
+async def delete_history_record(
+    record_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """删除历史记录（仅限本人）"""
     result = await db.execute(
-        select(DivinationRecord).where(DivinationRecord.id == record_id)
+        select(DivinationRecord).where(
+            DivinationRecord.id == record_id,
+            DivinationRecord.user_id == current_user.id,
+        )
     )
     record = result.scalar_one_or_none()
     if not record:
-        return ApiResponse(success=False, error="记录不存在")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="记录不存在")
     await db.delete(record)
     await db.commit()
     return ApiResponse(success=True)

@@ -10,6 +10,7 @@ interface Notification {
 
 const notifications = ref<Notification[]>([])
 let nextId = 0
+const MAX_NOTIFICATIONS = 5
 
 export function useNotification() {
   function show(
@@ -18,6 +19,14 @@ export function useNotification() {
     message: string,
     duration = 3000
   ) {
+    // 去重：相同 type+title+message 的通知不重复弹出
+    const exists = notifications.value.find(
+      n => n.type === type && n.title === title && n.message === message
+    )
+    if (exists) {
+      return exists.id
+    }
+
     const id = nextId++
     const notification: Notification = {
       id,
@@ -27,7 +36,12 @@ export function useNotification() {
       duration,
     }
 
-    notifications.value = [...notifications.value, notification]
+    // 限制最大数量，超出时移除最早的通知
+    const updated = [...notifications.value, notification]
+    if (updated.length > MAX_NOTIFICATIONS) {
+      updated.splice(0, updated.length - MAX_NOTIFICATIONS)
+    }
+    notifications.value = updated
 
     return id
   }

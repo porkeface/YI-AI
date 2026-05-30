@@ -255,6 +255,9 @@ const notification = useNotification()
 const history = useHistory()
 const ws = useWebSocket()
 
+// 每次页面加载只弹一次演示模式提示
+let demoModeNotified = false
+
 const number1 = ref('')
 const number2 = ref('')
 const streamText = ref('')
@@ -333,7 +336,10 @@ async function handleSubmit() {
       if (mockResponse.success && mockResponse.data) {
         const data = mockResponse.data
         store.setResult(data.hexagram, data.changedHexagram, data.analysis)
-        notification.info('演示模式', '后端API未连接，使用演示数据')
+        if (!demoModeNotified) {
+          demoModeNotified = true
+          notification.info('演示模式', '后端API未连接，使用演示数据')
+        }
         saveToHistory()
       } else {
         store.setError(response.error || '起卦失败，请重试')
@@ -352,7 +358,10 @@ async function handleSubmit() {
     if (mockResponse.success && mockResponse.data) {
       const data = mockResponse.data
       store.setResult(data.hexagram, data.changedHexagram, data.analysis)
-      notification.info('演示模式', '后端API未连接，使用演示数据')
+      if (!demoModeNotified) {
+        demoModeNotified = true
+        notification.info('演示模式', '后端API未连接，使用演示数据')
+      }
       saveToHistory()
     } else {
       store.setError('网络连接失败，请检查后端服务')

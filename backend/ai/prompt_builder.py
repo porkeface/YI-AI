@@ -15,6 +15,7 @@ from foundation.types import (
     SixRelation,
     Verdict,
 )
+from foundation.reference_data import get_line_text, get_tuan_text
 
 
 class PromptBuilder:
@@ -77,7 +78,7 @@ class PromptBuilder:
         parts.append(self._format_hexagram_info(hexagram))
 
         # 3. 六爻详情
-        parts.append(self._format_lines(hexagram.lines))
+        parts.append(self._format_lines(hexagram.lines, hexagram.id))
 
         # 4. 规则分析结果
         parts.append(self._format_analysis(analysis))
@@ -108,6 +109,10 @@ class PromptBuilder:
         Returns:
             格式化后的文本
         """
+        # 彖辞
+        tuan = get_tuan_text(hexagram.id)
+        tuan_line = f"\n- 彖辞：{tuan}" if tuan else ""
+
         return (
             f"【卦象信息】\n"
             f"- 卦名：{hexagram.name}\n"
@@ -119,10 +124,12 @@ class PromptBuilder:
             f"{hexagram.lower_trigram.element.value}）\n"
             f"- 卦辞：{hexagram.judgment}\n"
             f"- 象辞：{hexagram.image}"
+            f"{tuan_line}"
         )
 
     def _format_lines(
-        self, lines: tuple[Line, Line, Line, Line, Line, Line]
+        self, lines: tuple[Line, Line, Line, Line, Line, Line],
+        hexagram_id: int | None = None,
     ) -> str:
         """格式化六爻详情
 
@@ -152,10 +159,16 @@ class PromptBuilder:
             elif line.is_ying:
                 role_str = " [应]"
 
+            # 爻辞
+            line_text_data = get_line_text(hexagram_id, line.position) if hexagram_id else None
+            yao_text = ""
+            if line_text_data:
+                yao_text = f" \"{line_text_data['text']}\""
+
             rows.append(
                 f"- {pos_name}：{line.gan_zhi} "
                 f"{yin_yang_str}爻 {line.element.value} "
-                f"{line.six_relation.value}{moving_str}{role_str}"
+                f"{line.six_relation.value}{moving_str}{role_str}{yao_text}"
             )
 
         return header + "\n" + "\n".join(rows)

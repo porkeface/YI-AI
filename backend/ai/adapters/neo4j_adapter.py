@@ -86,7 +86,8 @@ class Neo4jGraphBackend:
     def add_node(self, node: GraphNode) -> None:
         """添加或更新节点"""
         driver = self._get_driver()
-        props = {"id": node.id, "name": node.name, **node.properties}
+        # 不将 id 放入 props，防止 SET n += $props 覆盖 MERGE 模式中的 id
+        props = {"name": node.name, **{k: v for k, v in node.properties.items() if k != "id"}}
         # 验证 node_type 来自枚举，防止注入
         node_type = node.node_type.value
         assert node_type in [t.value for t in NodeType], f"Invalid node type: {node_type}"

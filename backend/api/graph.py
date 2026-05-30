@@ -10,7 +10,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from api.schemas import ApiResponse
-from ai.knowledge_graph import KnowledgeGraph
+from ai.knowledge_graph import KnowledgeGraph, NodeType
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/graph", tags=["graph"])
@@ -39,41 +39,53 @@ async def get_graph_data(
 ):
     """获取图谱数据（Cytoscape.js 格式）"""
     graph = _get_graph()
+    backend = graph._backend
 
     nodes = []
     edges = []
     edge_id = 0
 
-    for nid, node in graph._backend._nodes.items():
-        if node_type and node["type"] != node_type:
-            continue
-        if len(nodes) >= limit:
-            break
+    # Use query_by_type for filtering, or get all types
+    if node_type:
+        try:
+            nt = NodeType(node_type)
+            all_nodes = backend.query_by_type(nt)
+        except ValueError:
+            all_nodes = ()
+    else:
+        all_nodes = []
+        for nt in NodeType:
+            all_nodes.extend(backend.query_by_type(nt))
 
+    # Apply limit
+    limited_nodes = list(all_nodes)[:limit]
+    node_ids = set()
+
+    for node in limited_nodes:
+        node_ids.add(node.id)
         nodes.append({
             "data": {
-                "id": nid,
-                "label": node["properties"].get("name", nid),
-                "type": node["type"],
-                **{k: v for k, v in node["properties"].items() if k != "name"},
+                "id": node.id,
+                "label": node.name,
+                "type": node.node_type.value,
+                **{k: v for k, v in node.properties.items() if k != "name"},
             }
         })
 
-    # 收集已选中节点的边
-    node_ids = {n["data"]["id"] for n in nodes}
-    for (src, tgt), edges_list in graph._backend._edges.items():
-        if src in node_ids and tgt in node_ids:
-            for edge in edges_list:
-                edge_id += 1
-                edges.append({
-                    "data": {
-                        "id": f"e{edge_id}",
-                        "source": src,
-                        "target": tgt,
-                        "relation": edge["relation"],
-                        **edge.get("properties", {}),
-                    }
-                })
+    # Get edges between selected nodes using get_edges
+    all_edges = backend.get_edges()
+    for edge in all_edges:
+        if edge.source_id in node_ids and edge.target_id in node_ids:
+            edge_id += 1
+            edges.append({
+                "data": {
+                    "id": f"e{edge_id}",
+                    "source": edge.source_id,
+                    "target": edge.target_id,
+                    "relation": edge.relation.value,
+                    **edge.properties,
+                }
+            })
 
     return ApiResponse(success=True, data=GraphData(nodes=nodes, edges=edges).model_dump())
 
@@ -92,14 +104,14 @@ async def get_node_detail(node_id: str):
     return ApiResponse(success=True, data={
         "node": {
             "id": node_id,
-            "type": node["type"],
-            **node["properties"],
+            "type": node.node_type.value,
+            **node.properties,
         },
         "neighbors": [
             {
-                "id": n["id"],
-                "type": n["type"],
-                **n.get("properties", {}),
+                "id": n.id,
+                "type": n.node_type.value,
+                **n.properties,
             }
             for n in neighbors
         ],
@@ -113,14 +125,19 @@ async def get_graph_stats():
     backend = graph._backend
 
     type_counts: dict[str, int] = {}
-    for node in backend._nodes.values():
-        t = node["type"]
-        type_counts[t] = type_counts.get(t, 0) + 1
+    total_nodes = 0
+    for nt in NodeType:
+        nodes = backend.query_by_type(nt)
+        count = len(nodes)
+        if count > 0:
+            type_counts[nt.value] = count
+        total_nodes += count
 
-    edge_count = sum(len(v) for v in backend._edges.values())
+    all_edges = backend.get_edges()
+    edge_count = len(all_edges)
 
     return ApiResponse(success=True, data={
-        "nodeCount": len(backend._nodes),
+        "nodeCount": total_nodes,
         "edgeCount": edge_count,
         "typeCounts": type_counts,
     })

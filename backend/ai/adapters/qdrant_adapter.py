@@ -95,18 +95,28 @@ class QdrantVectorBackend:
     ) -> list[dict[str, Any]]:
         """向量相似度检索"""
         client = self._get_client()
-        results = client.search(
-            collection_name=self._collection,
-            query_vector=query_vector,
-            limit=top_k,
-        )
+        # 兼容 qdrant-client >= 1.7（query_points 替代 search）
+        if hasattr(client, "query_points"):
+            response = client.query_points(
+                collection_name=self._collection,
+                query=query_vector,
+                limit=top_k,
+                with_payload=True,
+            )
+            hits = response.points
+        else:
+            hits = client.search(
+                collection_name=self._collection,
+                query_vector=query_vector,
+                limit=top_k,
+            )
         return [
             {
                 "id": str(hit.id),
                 "score": hit.score,
                 **(hit.payload or {}),
             }
-            for hit in results
+            for hit in hits
         ]
 
     def delete(self, doc_id: str) -> None:

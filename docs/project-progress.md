@@ -134,7 +134,47 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 
 ---
 
-## 七、Phase 3.6 - 向量检索与知识图谱（已完成）
+## 七、知识库基础数据（已完成）
+
+> 完成时间：2026-05-30
+
+### 数据文件
+
+| 文件 | 条目 | 说明 |
+|------|------|------|
+| `foundation/data/line_texts.json` | 384 | 全部64卦×6爻的爻辞+小象辞 |
+| `foundation/data/tuan_texts.json` | 64 | 全部64卦的彖辞 |
+| `foundation/data/najia_rules.json` | 48 | 京房纳甲规则（8经卦×6爻位） |
+| `foundation/data/six_spirit_rules.json` | 60 | 六神排布规则（10天干×6爻位） |
+| `foundation/data/palace_order.json` | 64 | 八宫卦序+世应位置 |
+| `foundation/data/element_prosperity.json` | 25 | 五行旺衰表（5行×5季） |
+
+### 引擎模块
+
+| 模块 | 说明 |
+|------|------|
+| `foundation/gan_zhi_engine.py` | 干支纳甲引擎（京房纳甲法） |
+| `foundation/six_relation_engine.py` | 六亲推算引擎（五行生克关系） |
+| `foundation/six_spirit_engine.py` | 六神排布引擎（日干起青龙） |
+| `foundation/shi_ying_engine.py` | 世应位置引擎（八宫卦序） |
+
+### 验证结果
+
+```bash
+# 运行验证引擎
+python backend/scripts/validate_engines.py
+
+# 结果：全部64卦通过
+# - 纳甲规则：✅ 8经卦×6爻位 干支正确
+# - 六神排布：✅ 10天干×6爻位 排布正确
+# - 八宫卦序：✅ 8宫×8卦 世应正确
+# - 五行旺衰：✅ 5行×5季 状态正确
+# - 卦象充实：✅ 64卦 爻辞/彖辞/纳甲/六亲/六神/世应全部充实
+```
+
+---
+
+## 八、Phase 3.6 - 向量检索与知识图谱（已完成）
 
 > 完成时间：2026-05-30
 
@@ -151,6 +191,10 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 | RAG融合改造 | `ai/rag_fusion.py` | 真实向量检索接入 + RRF融合 |
 | 工作流改造 | `ai/agent/workflow.py` | 使用RAGFusion公共API，图谱上下文注入 |
 | 索引脚本 | `scripts/index_knowledge.py` | 批量索引104条知识到Qdrant |
+| 图谱写入脚本 | `scripts/seed_neo4j.py` | 将461节点+786边写入Neo4j |
+| Neo4j Schema | `infra/init_neo4j.cypher` | 约束+索引初始化 |
+| Docker Compose | `docker-compose.yml` | Qdrant (6333) + Neo4j (7475/7688) 服务 |
+| 图谱API修复 | `api/graph.py` | 使用GraphBackend公共协议，兼容Neo4j后端 |
 | 依赖 | `pyproject.toml` | 添加qdrant-client、fastembed、neo4j可选依赖 |
 
 ### 架构设计
@@ -185,10 +229,20 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 QDRANT_URL=http://localhost:6333
 QDRANT_COLLECTION=yiai_knowledge
 
-# Neo4j 图数据库
-NEO4J_URI=bolt://localhost:7687
+# Neo4j 图数据库（Docker Compose 默认端口 7688）
+NEO4J_URI=bolt://localhost:7688
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=your_password
+NEO4J_PASSWORD=changeme
+```
+
+### Docker Compose 一键启动
+
+```bash
+# 启动全部基础设施（PostgreSQL + Redis + Qdrant + Neo4j）
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
 ```
 
 ### 安装可选依赖
@@ -209,6 +263,18 @@ pip install yiai[all]
 ```bash
 # 启动 Qdrant 后运行
 python backend/scripts/index_knowledge.py
+
+# 启动 Neo4j 后运行
+NEO4J_URI=bolt://localhost:7688 NEO4J_PASSWORD=changeme python backend/scripts/seed_neo4j.py
+```
+
+### 验证结果
+
+```
+Neo4j: 461 节点 + 786 条关系（64卦、384爻、8卦、5五行）
+Qdrant: 104 条知识向量已索引
+语义搜索: "乾卦 初九 潜龙勿用" → 乾·初九 (score 0.831)
+图谱路径: 乾为天 → 坤为地（1步，via opposite）
 ```
 
 ---

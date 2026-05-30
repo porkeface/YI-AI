@@ -1,7 +1,7 @@
 # YI-AI 项目进度报告
 
-> 最后更新：2026-05-29
-> 版本：v0.3.0
+> 最后更新：2026-05-30
+> 版本：v0.4.0
 
 ---
 
@@ -14,6 +14,7 @@
 | Phase 2.5 | ✅ 已完成 | 100% | 评估框架、A/B测试、Prompt管理、缓存 |
 | Phase 3 | ✅ 已完成 | 100% | Agent工作流、深度推理、多模型协作、观察Agent |
 | Phase 3.5 | ✅ 已完成 | 100% | 插件系统、API平台、企业版、i18n、分析平台 |
+| **Phase 3.6** | **✅ 已完成** | **100%** | **向量检索(Qdrant)、知识图谱(Neo4j)、Embedding** |
 | Phase 4 | ⏳ 未开始 | 0% | 完整东方变化学AI平台 |
 
 ---
@@ -93,7 +94,7 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 - `_classify_intent` - 关键词匹配意图分类（divination/evolution/trend/learn）
 - `_retrieve_memory` - 从4层记忆系统召回相关记忆
 - `_rule_analyze` - 调用规则引擎进行确定性分析
-- `_rag_retrieve` - 调用KnowledgeBase检索知识上下文
+- `_rag_retrieve` - 调用RAGFusion三路融合检索（向量+图谱+规则）
 - `_interpret` - 调用LLM生成AI解释（DeepSeek/Qwen，含降级方案）
 - `_evolution_simulate` - 调用推演引擎执行卦象演化
 - `_safety_check` - 检查禁止性承诺（"一定会"、"必然"等）
@@ -114,7 +115,88 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 | M3.5.5 数据分析 | ✅ | EventTracker（事件追踪、仪表盘、漏斗分析）、/api/analytics/* |
 | M3.5.6 v3.0发布 | ✅ | 平台版本 |
 
-### API端点总览
+---
+
+## 七、Phase 3.6 - 向量检索与知识图谱（已完成）
+
+> 完成时间：2026-05-30
+
+### 实现内容
+
+| 模块 | 文件 | 说明 |
+|------|------|------|
+| Embedding服务 | `ai/embedding.py` | fastembed本地向量生成（BAAI/bge-small-en-v1.5，384维） |
+| VectorBackend协议 | `ai/adapters/__init__.py` | 向量存储后端协议定义 |
+| Qdrant适配器 | `ai/adapters/qdrant_adapter.py` | Qdrant向量数据库适配器（UUID点ID、超时配置） |
+| Neo4j适配器 | `ai/adapters/neo4j_adapter.py` | Neo4j图数据库适配器（完整GraphBackend实现） |
+| 知识库改造 | `ai/knowledge_base.py` | 支持向量检索 + 自动降级到关键词匹配 |
+| 知识图谱改造 | `ai/knowledge_graph.py` | 支持Neo4j后端自动检测 + InMemoryGraph降级 |
+| RAG融合改造 | `ai/rag_fusion.py` | 真实向量检索接入 + RRF融合 |
+| 工作流改造 | `ai/agent/workflow.py` | 使用RAGFusion公共API，图谱上下文注入 |
+| 索引脚本 | `scripts/index_knowledge.py` | 批量索引104条知识到Qdrant |
+| 依赖 | `pyproject.toml` | 添加qdrant-client、fastembed、neo4j可选依赖 |
+
+### 架构设计
+
+```
+用户查询
+    ↓
+[_rag_retrieve] 工作流节点
+    ↓
+[RAGFusion] 三路融合检索
+    ├─ 向量检索路：EmbeddingService → QdrantVectorBackend.search()
+    ├─ 图谱检索路：KnowledgeGraph.get_hexagram_context()
+    └─ 规则检索路：KnowledgeBase.retrieve()（关键词匹配）
+    ↓
+[RRF融合] Reciprocal Rank Fusion (k=60)
+    ↓
+返回 top-N 知识上下文
+```
+
+### 降级机制
+
+```
+有 Qdrant + fastembed → 向量语义检索（最佳质量）
+有 KnowledgeGraph     → 图谱关系检索
+无外部服务            → 关键词匹配（MVP兜底）
+```
+
+### 环境变量配置
+
+```bash
+# Qdrant 向量数据库
+QDRANT_URL=http://localhost:6333
+QDRANT_COLLECTION=yiai_knowledge
+
+# Neo4j 图数据库
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password
+```
+
+### 安装可选依赖
+
+```bash
+# 向量检索
+pip install qdrant-client fastembed
+
+# 知识图谱
+pip install neo4j
+
+# 全部安装
+pip install yiai[all]
+```
+
+### 索引知识库
+
+```bash
+# 启动 Qdrant 后运行
+python backend/scripts/index_knowledge.py
+```
+
+---
+
+## 八、API端点总览
 
 | 路由前缀 | 模块 | 功能 |
 |----------|------|------|
@@ -138,7 +220,7 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 
 ---
 
-## 七、前端页面总览
+## 九、前端页面总览
 
 | 页面 | 路径 | 功能 | 认证 |
 |------|------|------|------|
@@ -160,7 +242,7 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 
 ---
 
-## 八、测试状态
+## 十、测试状态
 
 | 指标 | 数值 |
 |------|------|
@@ -169,30 +251,15 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 | 测试文件数 | 14 |
 | 覆盖模块 | foundation, rule_engine, ai, api, memory, observation, plugins, api_platform, i18n, analytics, enterprise, phase25, phase3, phase3_batch2 |
 
-### 测试文件列表
-- `test_foundation.py` - 基础易学引擎
-- `test_rule_engine.py` - 规则引擎
-- `test_ai.py` - AI模块
-- `test_api.py` - API端点
-- `test_memory.py` - 4层记忆系统
-- `test_observation.py` - 观察Agent
-- `test_plugins.py` - 插件系统
-- `test_api_platform.py` - API平台
-- `test_i18n.py` - 国际化
-- `test_analytics.py` - 分析平台
-- `test_enterprise.py` - 企业版
-- `test_phase25.py` - Phase 2.5功能
-- `test_phase3.py` - Phase 3核心
-- `test_phase3_batch2.py` - Phase 3扩展
-
 ---
 
-## 九、代码统计
+## 十一、代码统计
 
 ### 后端（Python）
-- 总文件数：~95个
-- 核心模块：foundation(13), rule_engine(6), ai(40+), api(14), db(3)
+- 总文件数：~100个
+- 核心模块：foundation(13), rule_engine(6), ai(45+), api(17), adapters(3), db(3)
 - 测试文件：14个
+- 脚本：scripts/index_knowledge.py
 
 ### 前端（Vue/TypeScript）
 - 总文件数：~75个
@@ -203,13 +270,13 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 
 ---
 
-## 十、待办事项（Phase 4 方向）
+## 十二、待办事项（Phase 4 方向）
 
 ### 基础设施迁移
+- [x] ~~内存list → Qdrant（向量检索）~~ → ✅ 已完成（Phase 3.6）
+- [x] ~~内存dict → Neo4j（知识图谱）~~ → ✅ 已完成（Phase 3.6）
 - [ ] SQLite → PostgreSQL（用户数据持久化）
 - [ ] 内存dict → Redis（会话缓存、限流）
-- [ ] 内存list → Qdrant（向量检索）
-- [ ] 内存dict → Neo4j（知识图谱、语义记忆）
 
 ### 功能增强
 - [ ] WebSocket流式输出（前端实时显示）
@@ -219,14 +286,14 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 
 ### 生产化
 - [ ] CI/CD流水线完善
-- [ ] Docker容器化
+- [ ] Docker容器化（含Qdrant、Neo4j服务）
 - [ ] Kubernetes部署
 - [ ] 监控告警（Prometheus + Grafana）
 - [ ] 日志收集（Loki + OpenTelemetry）
 
 ---
 
-## 十一、技术债务
+## 十三、技术债务
 
 | 项目 | 优先级 | 说明 |
 |------|--------|------|
@@ -234,7 +301,9 @@ start → classify_intent → [retrieve_memory] → rule_analyze → rag_retriev
 | on_event deprecated | P2 | FastAPI 0.103+已弃用，需迁移到lifespan |
 | 管理端点无认证 | P1 | enterprise/plugins/api_platform端点未加认证 |
 | 前端无测试 | P2 | 需配置Vitest |
+| Embedding维度硬编码 | P2 | embedding.py硬编码384维，应从模型动态获取 |
+| Neo4j连接超时 | P2 | is_available()阻塞数秒，需配置超时参数 |
 
 ---
 
-*文档生成时间：2026-05-29*
+*文档生成时间：2026-05-30*

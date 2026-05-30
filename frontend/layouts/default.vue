@@ -89,12 +89,6 @@
               <template #default>
                 <div v-if="isAuthenticated" class="flex items-center gap-2 ml-2 pl-2 border-l border-gold-500/30">
                   <span class="text-gold-500/80 text-sm">{{ displayName }}</span>
-                  <NuxtLink
-                    to="/history"
-                    class="text-gold-500/60 hover:text-gold-400 transition-colors text-sm"
-                  >
-                    历史
-                  </NuxtLink>
                   <button
                     @click="handleLogout"
                     class="text-red-400/80 hover:text-red-300 transition-colors text-sm"

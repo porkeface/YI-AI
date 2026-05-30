@@ -2,39 +2,6 @@
   <div class="min-h-screen flex flex-col items-center justify-center px-4">
     <SeoHead title="首页" description="YI-AI 易学AI系统 - 东方变化学AI操作系统，智能六爻排盘" />
 
-    <!-- 用户状态栏 -->
-    <div class="fixed top-4 right-4 z-40 flex items-center gap-3">
-      <template v-if="isAuthenticated">
-        <span class="text-gold-500/80 text-sm">{{ displayName || user?.username }}</span>
-        <NuxtLink
-          to="/history"
-          class="px-3 py-1.5 text-xs rounded-lg border border-gold-500/30 text-gold-500/80 hover:text-gold-500 hover:border-gold-500/50 transition-all duration-200"
-        >
-          历史
-        </NuxtLink>
-        <button
-          @click="handleLogout"
-          class="px-3 py-1.5 text-xs rounded-lg border border-red-500/30 text-red-400/80 hover:text-red-400 hover:border-red-500/50 transition-all duration-200"
-        >
-          登出
-        </button>
-      </template>
-      <template v-else>
-        <NuxtLink
-          to="/login"
-          class="px-3 py-1.5 text-xs rounded-lg border border-gold-500/30 text-gold-500/80 hover:text-gold-500 hover:border-gold-500/50 transition-all duration-200"
-        >
-          登录
-        </NuxtLink>
-        <NuxtLink
-          to="/register"
-          class="px-3 py-1.5 text-xs rounded-lg border border-gold-500/30 text-gold-500/80 hover:text-gold-500 hover:border-gold-500/50 transition-all duration-200"
-        >
-          注册
-        </NuxtLink>
-      </template>
-    </div>
-
     <!-- 太极动画 -->
     <div class="relative w-64 h-64 mb-8">
       <TaijiAnimation />
@@ -75,12 +42,6 @@
 </template>
 
 <script setup lang="ts">
-const { user, isAuthenticated, displayName, logout } = useAuth()
-
-function handleLogout() {
-  logout()
-}
-
 const features = [
   {
     icon: '☯',

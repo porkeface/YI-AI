@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from api.schemas import ApiResponse
+from api.hexagram_enrich import enrich_hexagram
 from foundation.hexagram_engine import HexagramEngine
 from foundation.shi_ying_engine import ShiYingEngine
 from foundation.types import Hexagram, Line
@@ -92,6 +93,7 @@ async def get_hexagram(hexagram_id: int):
     except ValueError as e:
         return ApiResponse(success=False, error=str(e))
 
+    hexagram = enrich_hexagram(hexagram)
     return ApiResponse(success=True, data=_hexagram_to_dict(hexagram))
 
 

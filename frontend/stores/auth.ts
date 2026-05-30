@@ -91,6 +91,7 @@ export const useAuthStore = defineStore('auth', {
           headers: { Authorization: `Bearer ${this.token}` },
         })
         if (!response.ok) {
+          // Token 过期或无效，清除认证状态
           this.logout()
           return
         }
@@ -98,7 +99,8 @@ export const useAuthStore = defineStore('auth', {
         this.user = data
         this.isAuthenticated = true
       } catch {
-        this.logout()
+        // 网络错误时不清除 token，保留乐观状态
+        // 用户可能只是暂时断网，不应强制登出
       }
     },
 
@@ -116,6 +118,8 @@ export const useAuthStore = defineStore('auth', {
         const token = localStorage.getItem('auth_token')
         if (token) {
           this.token = token
+          // 乐观设置：有 token 就先认为已认证，避免 UI 闪烁
+          this.isAuthenticated = true
           this.fetchUser()
         }
       }

@@ -14,7 +14,7 @@
             </span>
           </NuxtLink>
 
-          <!-- 导航链接 -->
+          <!-- 导航链接 + 用户状态 -->
           <ResponsiveNav>
             <NuxtLink
               to="/divination"
@@ -83,6 +83,41 @@
               <ThemeToggle />
               <LanguageSwitcher />
             </ClientOnly>
+
+            <!-- 用户认证状态 -->
+            <ClientOnly>
+              <template #default>
+                <div v-if="isAuthenticated" class="flex items-center gap-2 ml-2 pl-2 border-l border-gold-500/30">
+                  <span class="text-gold-500/80 text-sm">{{ displayName }}</span>
+                  <NuxtLink
+                    to="/history"
+                    class="text-gold-500/60 hover:text-gold-400 transition-colors text-sm"
+                  >
+                    历史
+                  </NuxtLink>
+                  <button
+                    @click="handleLogout"
+                    class="text-red-400/80 hover:text-red-300 transition-colors text-sm"
+                  >
+                    登出
+                  </button>
+                </div>
+                <div v-else class="flex items-center gap-2 ml-2 pl-2 border-l border-gold-500/30">
+                  <NuxtLink
+                    to="/login"
+                    class="text-gold-500/80 hover:text-gold-400 transition-colors text-sm"
+                  >
+                    登录
+                  </NuxtLink>
+                  <NuxtLink
+                    to="/register"
+                    class="text-gold-500/60 hover:text-gold-400 transition-colors text-sm"
+                  >
+                    注册
+                  </NuxtLink>
+                </div>
+              </template>
+            </ClientOnly>
           </ResponsiveNav>
         </div>
       </nav>
@@ -103,5 +138,12 @@
 </template>
 
 <script setup lang="ts">
-// 默认布局
+const { isAuthenticated, displayName, logout } = useAuth()
+
+const router = useRouter()
+
+function handleLogout() {
+  logout()
+  router.push('/')
+}
 </script>

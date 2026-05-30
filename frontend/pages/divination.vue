@@ -8,40 +8,6 @@
 
     <SeoHead title="六爻起卦" description="使用传统六爻排盘方法，为您解答疑惑" />
 
-    <!-- 顶部导航 -->
-    <div class="fixed top-4 left-4 z-40">
-      <NuxtLink
-        to="/"
-        class="px-3 py-1.5 text-xs rounded-lg border border-gold-500/30 text-gold-500/80 hover:text-gold-500 hover:border-gold-500/50 transition-all duration-200"
-      >
-        ← 首页
-      </NuxtLink>
-    </div>
-    <div class="fixed top-4 right-4 z-40 flex items-center gap-3">
-      <template v-if="isAuthenticated">
-        <span class="text-gold-500/80 text-sm">{{ displayName || user?.username }}</span>
-        <NuxtLink
-          to="/history"
-          class="px-3 py-1.5 text-xs rounded-lg border border-gold-500/30 text-gold-500/80 hover:text-gold-500 hover:border-gold-500/50 transition-all duration-200"
-        >
-          历史
-        </NuxtLink>
-        <button
-          @click="handleLogout"
-          class="px-3 py-1.5 text-xs rounded-lg border border-red-500/30 text-red-400/80 hover:text-red-400 hover:border-red-500/50 transition-all duration-200"
-        >
-          登出
-        </button>
-      </template>
-      <template v-else>
-        <NuxtLink
-          to="/login"
-          class="px-3 py-1.5 text-xs rounded-lg border border-gold-500/30 text-gold-500/80 hover:text-gold-500 hover:border-gold-500/50 transition-all duration-200"
-        >
-          登录
-        </NuxtLink>
-      </template>
-    </div>
 
     <ResponsiveContainer max-width="lg" class="relative z-10">
       <!-- 页面标题 -->
@@ -288,11 +254,6 @@ const mockData = useMockData()
 const notification = useNotification()
 const history = useHistory()
 const ws = useWebSocket()
-const { user, isAuthenticated, displayName, logout } = useAuth()
-
-function handleLogout() {
-  logout()
-}
 
 const number1 = ref('')
 const number2 = ref('')

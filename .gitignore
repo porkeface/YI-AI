@@ -96,3 +96,17 @@ docker-compose.override.yml
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# ============================================================
+# Claude Code (user-specific)
+# ============================================================
+.claude/
+skills-lock.json
+
+# MCP 工具临时文件
+.playwright-mcp/
+
+# Comet/OpenSpec 内部状态文件
+openspec/changes/**/.comet.yaml
+openspec/changes/**/.comet/
+openspec/changes/**/.openspec.yaml

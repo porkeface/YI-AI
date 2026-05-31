@@ -82,9 +82,10 @@ class LLMClient:
         """
         self.config = config
         self._client = httpx.AsyncClient(
-            timeout=httpx.Timeout(30.0, connect=10.0),
+            timeout=httpx.Timeout(60.0, connect=10.0),
             headers={
                 "Authorization": f"Bearer {config.api_key}",
+                "api-key": config.api_key,
                 "Content-Type": "application/json",
             },
         )

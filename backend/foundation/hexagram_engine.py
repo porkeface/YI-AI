@@ -267,6 +267,12 @@ class HexagramEngine:
         cls._build_indexes()
         idx = cls._NAME_INDEX.get(name)
         if idx is None:
+            # 支持短名称查找（如"乾"匹配"乾为天"）
+            for full_name, i in cls._NAME_INDEX.items():
+                if full_name.startswith(name):
+                    idx = i
+                    break
+        if idx is None:
             raise ValueError(f"无效的卦名：{name}")
         return cls._create_from_data(HEXAGRAM_DATA[idx])
 

@@ -51,30 +51,25 @@
           <Select
             v-model="questionType"
             label="问题类型"
-          >
-            <option value="career">事业</option>
-            <option value="wealth">财运</option>
-            <option value="love">感情</option>
-            <option value="health">健康</option>
-            <option value="general">综合</option>
-          </Select>
+            :options="questionTypeOptions"
+          />
         </div>
       </div>
 
       <!-- 操作按钮 -->
       <div class="flex justify-center gap-4 mb-12">
         <button
-          :disabled="!canSubmit || qimen.loading"
+          :disabled="!canSubmit || loading"
           @click="handleCreateChart"
           :class="[
             'px-8 py-3 rounded-xl font-medium transition-all duration-300',
             'border-2 border-gold-500 text-gold-500',
-            canSubmit && !qimen.loading
+            canSubmit && !loading
               ? 'bg-gold-500/10 hover:bg-gold-500/20 hover:shadow-lg hover:shadow-gold-500/20 active:scale-95'
               : 'bg-ink-800/50 text-gold-500/40 cursor-not-allowed'
           ]"
         >
-          <span v-if="qimen.loading" class="flex items-center gap-2">
+          <span v-if="loading" class="flex items-center gap-2">
             <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -84,12 +79,12 @@
           <span v-else>起局</span>
         </button>
         <button
-          :disabled="!canSubmit || qimen.loading"
+          :disabled="!canSubmit || loading"
           @click="handleAnalyze"
           :class="[
             'px-8 py-3 rounded-xl font-medium transition-all duration-300',
             'border-2 border-gold-500/50 text-gold-500/80',
-            canSubmit && !qimen.loading
+            canSubmit && !loading
               ? 'bg-ink-800/50 hover:bg-gold-500/10 hover:border-gold-500 active:scale-95'
               : 'bg-ink-800/50 text-gold-500/40 cursor-not-allowed'
           ]"
@@ -99,79 +94,58 @@
       </div>
 
       <!-- 错误提示 -->
-      <transition
-        enter-active-class="transition-all duration-300"
-        enter-from-class="opacity-0 scale-95"
-        enter-to-class="opacity-100 scale-100"
-      >
-        <ErrorBoundary
-          v-if="error"
-          :error="error"
-          :retryable="true"
-          class="mb-8"
-          @retry="handleCreateChart"
-        />
-      </transition>
+      <div v-if="error" class="mb-8 p-4 rounded-lg border border-red-500/50 bg-red-500/10">
+        <p class="text-red-400 text-sm">{{ error }}</p>
+      </div>
 
       <!-- 加载状态 -->
-      <transition
-        enter-active-class="transition-all duration-500"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-      >
-        <div v-if="qimen.loading" class="mt-8">
-          <LoadingSpinner text="正在起局，请稍候..." />
-        </div>
-      </transition>
+      <div v-if="loading" class="mt-8 text-center">
+        <p class="text-gold-500/60 text-sm">正在起局，请稍候...</p>
+      </div>
 
       <!-- 奇门盘结果 -->
-      <transition
-        enter-active-class="transition-all duration-700 ease-out"
-        enter-from-class="opacity-0 translate-y-8"
-        enter-to-class="opacity-100 translate-y-0"
-      >
-        <div v-if="qimen.chart" class="mt-8 space-y-6">
+      <div v-if="chart && !loading" class="mt-8 space-y-6">
           <!-- 干支信息 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">干支信息</h3>
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">年柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart?.yearGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ chart?.yearGanZhi }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">月柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart?.monthGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ chart?.monthGanZhi }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">日柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart?.dayGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ chart?.dayGanZhi }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">时柱</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.chart?.hourGanZhi }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ chart?.hourGanZhi }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">局数</p>
-                <p class="text-gold-400 text-lg">{{ qimen.chart?.ju }}局</p>
+                <p class="text-gold-400 text-lg">{{ chart?.ju }}局</p>
               </div>
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
               <span class="px-3 py-1 rounded-md bg-gold-500/10 text-gold-500/80 text-xs">
-                {{ qimen.chart?.yinYang }}
+                {{ chart?.yinYang }}
               </span>
               <span class="px-3 py-1 rounded-md bg-gold-500/10 text-gold-500/80 text-xs">
-                {{ qimen.chart?.dun }}
+                {{ chart?.dun }}
               </span>
               <span
-                v-for="kong in qimen.chart?.xunKong ?? []"
+                v-for="kong in chart?.xunKong ?? []"
                 :key="kong"
                 class="px-3 py-1 rounded-md bg-red-500/10 text-red-400 text-xs"
               >
                 空亡: {{ kong }}
               </span>
               <span
-                v-for="ma in qimen.chart?.maXing ?? []"
+                v-for="ma in chart?.maXing ?? []"
                 :key="ma"
                 class="px-3 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs"
               >
@@ -184,63 +158,54 @@
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">九宫奇门盘</h3>
             <div class="grid grid-cols-3 gap-2 max-w-md mx-auto">
-              <!-- 巽四宫 -->
               <div class="p-3 rounded-lg border border-gold-500/20 bg-ink-800/50 aspect-square flex flex-col justify-center items-center">
                 <p class="text-gold-500/50 text-xs mb-1">巽四</p>
                 <p class="text-gold-400 text-sm font-chinese">{{ getPalace(4)?.door || '-' }}</p>
                 <p class="text-gold-500/80 text-xs">{{ getPalace(4)?.star || '-' }}</p>
                 <p class="text-gold-500/60 text-xs">{{ getPalace(4)?.spirit || '-' }}</p>
               </div>
-              <!-- 离九宫 -->
               <div class="p-3 rounded-lg border border-gold-500/20 bg-ink-800/50 aspect-square flex flex-col justify-center items-center">
                 <p class="text-gold-500/50 text-xs mb-1">离九</p>
                 <p class="text-gold-400 text-sm font-chinese">{{ getPalace(9)?.door || '-' }}</p>
                 <p class="text-gold-500/80 text-xs">{{ getPalace(9)?.star || '-' }}</p>
                 <p class="text-gold-500/60 text-xs">{{ getPalace(9)?.spirit || '-' }}</p>
               </div>
-              <!-- 坤二宫 -->
               <div class="p-3 rounded-lg border border-gold-500/20 bg-ink-800/50 aspect-square flex flex-col justify-center items-center">
                 <p class="text-gold-500/50 text-xs mb-1">坤二</p>
                 <p class="text-gold-400 text-sm font-chinese">{{ getPalace(2)?.door || '-' }}</p>
                 <p class="text-gold-500/80 text-xs">{{ getPalace(2)?.star || '-' }}</p>
                 <p class="text-gold-500/60 text-xs">{{ getPalace(2)?.spirit || '-' }}</p>
               </div>
-              <!-- 震三宫 -->
               <div class="p-3 rounded-lg border border-gold-500/20 bg-ink-800/50 aspect-square flex flex-col justify-center items-center">
                 <p class="text-gold-500/50 text-xs mb-1">震三</p>
                 <p class="text-gold-400 text-sm font-chinese">{{ getPalace(3)?.door || '-' }}</p>
                 <p class="text-gold-500/80 text-xs">{{ getPalace(3)?.star || '-' }}</p>
                 <p class="text-gold-500/60 text-xs">{{ getPalace(3)?.spirit || '-' }}</p>
               </div>
-              <!-- 中五宫 -->
               <div class="p-3 rounded-lg border border-gold-500/30 bg-gold-500/10 aspect-square flex flex-col justify-center items-center">
                 <p class="text-gold-500/50 text-xs mb-1">中五</p>
                 <p class="text-gold-400 text-sm font-chinese">{{ getPalace(5)?.door || '-' }}</p>
                 <p class="text-gold-500/80 text-xs">{{ getPalace(5)?.star || '-' }}</p>
                 <p class="text-gold-500/60 text-xs">{{ getPalace(5)?.spirit || '-' }}</p>
               </div>
-              <!-- 兑七宫 -->
               <div class="p-3 rounded-lg border border-gold-500/20 bg-ink-800/50 aspect-square flex flex-col justify-center items-center">
                 <p class="text-gold-500/50 text-xs mb-1">兑七</p>
                 <p class="text-gold-400 text-sm font-chinese">{{ getPalace(7)?.door || '-' }}</p>
                 <p class="text-gold-500/80 text-xs">{{ getPalace(7)?.star || '-' }}</p>
                 <p class="text-gold-500/60 text-xs">{{ getPalace(7)?.spirit || '-' }}</p>
               </div>
-              <!-- 艮八宫 -->
               <div class="p-3 rounded-lg border border-gold-500/20 bg-ink-800/50 aspect-square flex flex-col justify-center items-center">
                 <p class="text-gold-500/50 text-xs mb-1">艮八</p>
                 <p class="text-gold-400 text-sm font-chinese">{{ getPalace(8)?.door || '-' }}</p>
                 <p class="text-gold-500/80 text-xs">{{ getPalace(8)?.star || '-' }}</p>
                 <p class="text-gold-500/60 text-xs">{{ getPalace(8)?.spirit || '-' }}</p>
               </div>
-              <!-- 坎一宫 -->
               <div class="p-3 rounded-lg border border-gold-500/20 bg-ink-800/50 aspect-square flex flex-col justify-center items-center">
                 <p class="text-gold-500/50 text-xs mb-1">坎一</p>
                 <p class="text-gold-400 text-sm font-chinese">{{ getPalace(1)?.door || '-' }}</p>
                 <p class="text-gold-500/80 text-xs">{{ getPalace(1)?.star || '-' }}</p>
                 <p class="text-gold-500/60 text-xs">{{ getPalace(1)?.spirit || '-' }}</p>
               </div>
-              <!-- 乾六宫 -->
               <div class="p-3 rounded-lg border border-gold-500/20 bg-ink-800/50 aspect-square flex flex-col justify-center items-center">
                 <p class="text-gold-500/50 text-xs mb-1">乾六</p>
                 <p class="text-gold-400 text-sm font-chinese">{{ getPalace(6)?.door || '-' }}</p>
@@ -268,7 +233,7 @@
                 </thead>
                 <tbody>
                   <tr
-                    v-for="palace in qimen.chart?.palaceInfo ?? []"
+                    v-for="palace in chart?.palaceInfo ?? []"
                     :key="palace.palace"
                     class="border-b border-gold-500/10 hover:bg-gold-500/5"
                   >
@@ -291,30 +256,24 @@
             </div>
           </div>
         </div>
-      </transition>
 
       <!-- 分析结果 -->
-      <transition
-        enter-active-class="transition-all duration-700 ease-out delay-200"
-        enter-from-class="opacity-0 translate-y-8"
-        enter-to-class="opacity-100 translate-y-0"
-      >
-        <div v-if="qimen.analysis" class="mt-8 space-y-6">
+      <div v-if="analysis" class="mt-8 space-y-6">
           <!-- 用神信息 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">用神分析</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30">
                 <p class="text-gold-500/50 text-xs mb-1">用神宫位</p>
-                <p class="text-gold-400 text-lg">{{ qimen.analysis?.yongShenPalace }}宫</p>
+                <p class="text-gold-400 text-lg">{{ analysis?.yongShenPalace }}宫</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30">
                 <p class="text-gold-500/50 text-xs mb-1">用神门</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis?.yongShenDoor }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ analysis?.yongShenDoor }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30">
                 <p class="text-gold-500/50 text-xs mb-1">用神星</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis?.yongShenStar }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ analysis?.yongShenStar }}</p>
               </div>
             </div>
           </div>
@@ -322,74 +281,103 @@
           <!-- 分析描述 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">分析结果</h3>
-            <p class="text-gold-500/80 text-sm leading-relaxed mb-6">{{ qimen.analysis?.description }}</p>
+            <p class="text-gold-500/80 text-sm leading-relaxed mb-6">{{ analysis?.description }}</p>
 
             <!-- 判定 -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">总体</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis?.verdict?.overall }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ analysis?.verdict?.overall }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">力量</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis?.verdict?.strength }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ analysis?.verdict?.strength }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">趋势</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ qimen.analysis?.verdict?.trend }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ analysis?.verdict?.trend }}</p>
               </div>
               <div class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30 text-center">
                 <p class="text-gold-500/50 text-xs mb-1">置信度</p>
-                <p class="text-gold-400 text-lg">{{ (qimen.analysis?.verdict?.confidence * 100).toFixed(1) }}%</p>
+                <p class="text-gold-400 text-lg">{{ (analysis?.verdict?.confidence * 100).toFixed(1) }}%</p>
               </div>
             </div>
           </div>
         </div>
-      </transition>
     </ResponsiveContainer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useQiMen } from '~/composables/useQiMen'
+import { useApi } from '~/composables/useApi'
 import { useNotification } from '~/composables/useNotification'
 import { isValidDate } from '~/utils/format'
 
-definePageMeta({})
+definePageMeta({ ssr: false })
 
-const qimen = useQiMen()
+const api = useApi()
 const notification = useNotification()
 
-const year = ref(new Date().getFullYear())
-const month = ref(new Date().getMonth() + 1)
-const day = ref(new Date().getDate())
-const hour = ref(new Date().getHours())
+const loading = ref(false)
+const chart = ref<any>(null)
+const analysis = ref<any>(null)
+
+const year = ref(String(new Date().getFullYear()))
+const month = ref(String(new Date().getMonth() + 1))
+const day = ref(String(new Date().getDate()))
+const hour = ref(String(new Date().getHours()))
 const questionType = ref('general')
 const error = ref<string | null>(null)
 
+const questionTypeOptions = [
+  { value: 'career', label: '事业' },
+  { value: 'wealth', label: '财运' },
+  { value: 'love', label: '感情' },
+  { value: 'health', label: '健康' },
+  { value: 'general', label: '综合' },
+]
+
 const canSubmit = computed(() => {
-  return year.value > 0 && isValidDate(year.value, month.value, day.value) && hour.value >= 0 && hour.value <= 23
+  const y = Number(year.value)
+  const m = Number(month.value)
+  const d = Number(day.value)
+  const h = Number(hour.value)
+  return y > 0 && isValidDate(y, m, d) && h >= 0 && h <= 23
 })
 
 function getPalace(num: number) {
-  return qimen.chart?.palaceInfo?.find(p => p.palace === num)
+  return chart.value?.palaceInfo?.find((p: any) => p.palace === num)
 }
 
 async function handleCreateChart() {
   if (!canSubmit.value) return
-
   error.value = null
+  loading.value = true
+  chart.value = null
 
   try {
-    await qimen.createChart({
-      year: year.value,
-      month: month.value,
-      day: day.value,
-      hour: hour.value,
-    })
+    const { data, error: apiError } = await api.request<{ success: boolean; data: any }>(
+      '/api/qimen/chart',
+      {
+        method: 'POST',
+        body: {
+          year: Number(year.value),
+          month: Number(month.value),
+          day: Number(day.value),
+          hour: Number(hour.value),
+        },
+      }
+    )
+    loading.value = false
+
+    if (apiError || !data?.success) {
+      throw new Error(apiError || '奇门起局失败')
+    }
+    chart.value = data.data
     notification.success('起局完成', '奇门盘已生成')
   } catch (err) {
+    loading.value = false
     error.value = err instanceof Error ? err.message : '起局失败'
     notification.error('起局失败', error.value)
   }
@@ -397,19 +385,33 @@ async function handleCreateChart() {
 
 async function handleAnalyze() {
   if (!canSubmit.value) return
-
   error.value = null
+  loading.value = true
+  analysis.value = null
 
   try {
-    await qimen.analyze({
-      year: year.value,
-      month: month.value,
-      day: day.value,
-      hour: hour.value,
-      question_type: questionType.value,
-    })
+    const { data, error: apiError } = await api.request<{ success: boolean; data: any }>(
+      '/api/qimen/analyze',
+      {
+        method: 'POST',
+        body: {
+          year: Number(year.value),
+          month: Number(month.value),
+          day: Number(day.value),
+          hour: Number(hour.value),
+          question_type: questionType.value,
+        },
+      }
+    )
+    loading.value = false
+
+    if (apiError || !data?.success) {
+      throw new Error(apiError || '奇门分析失败')
+    }
+    analysis.value = data.data
     notification.success('分析完成', '奇门分析已完成')
   } catch (err) {
+    loading.value = false
     error.value = err instanceof Error ? err.message : '分析失败'
     notification.error('分析失败', error.value)
   }

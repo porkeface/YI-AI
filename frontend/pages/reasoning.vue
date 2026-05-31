@@ -30,48 +30,30 @@
           <Select
             v-model="questionType"
             label="问题类型"
-          >
-            <option value="career">事业</option>
-            <option value="wealth">财运</option>
-            <option value="love">感情</option>
-            <option value="health">健康</option>
-            <option value="general">综合</option>
-          </Select>
+            :options="questionTypeOptions"
+          />
           <Select
             v-model="monthBranch"
             label="月支（可选）"
-          >
-            <option value="">自动</option>
-            <option value="子">子</option>
-            <option value="丑">丑</option>
-            <option value="寅">寅</option>
-            <option value="卯">卯</option>
-            <option value="辰">辰</option>
-            <option value="巳">巳</option>
-            <option value="午">午</option>
-            <option value="未">未</option>
-            <option value="申">申</option>
-            <option value="酉">酉</option>
-            <option value="戌">戌</option>
-            <option value="亥">亥</option>
-          </Select>
+            :options="monthBranchOptions"
+          />
         </div>
       </div>
 
       <!-- 操作按钮 -->
       <div class="flex justify-center gap-4 mb-12">
         <button
-          :disabled="!canSubmit || reasoning.loading"
+          :disabled="!canSubmit || loading"
           @click="handleDeepReason"
           :class="[
             'px-8 py-3 rounded-xl font-medium transition-all duration-300',
             'border-2 border-gold-500 text-gold-500',
-            canSubmit && !reasoning.loading
+            canSubmit && !loading
               ? 'bg-gold-500/10 hover:bg-gold-500/20 hover:shadow-lg hover:shadow-gold-500/20 active:scale-95'
               : 'bg-ink-800/50 text-gold-500/40 cursor-not-allowed'
           ]"
         >
-          <span v-if="reasoning.loading" class="flex items-center gap-2">
+          <span v-if="loading" class="flex items-center gap-2">
             <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -81,12 +63,12 @@
           <span v-else>深度推理</span>
         </button>
         <button
-          :disabled="!canSubmit || reasoning.loading"
+          :disabled="!canSubmit || loading"
           @click="handleBuildTree"
           :class="[
             'px-8 py-3 rounded-xl font-medium transition-all duration-300',
             'border-2 border-gold-500/50 text-gold-500/80',
-            canSubmit && !reasoning.loading
+            canSubmit && !loading
               ? 'bg-ink-800/50 hover:bg-gold-500/10 hover:border-gold-500 active:scale-95'
               : 'bg-ink-800/50 text-gold-500/40 cursor-not-allowed'
           ]"
@@ -96,57 +78,36 @@
       </div>
 
       <!-- 错误提示 -->
-      <transition
-        enter-active-class="transition-all duration-300"
-        enter-from-class="opacity-0 scale-95"
-        enter-to-class="opacity-100 scale-100"
-      >
-        <ErrorBoundary
-          v-if="error"
-          :error="error"
-          :retryable="true"
-          class="mb-8"
-          @retry="handleDeepReason"
-        />
-      </transition>
+      <div v-if="error" class="mb-8 p-4 rounded-lg border border-red-500/50 bg-red-500/10">
+        <p class="text-red-400 text-sm">{{ error }}</p>
+      </div>
 
       <!-- 加载状态 -->
-      <transition
-        enter-active-class="transition-all duration-500"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-      >
-        <div v-if="reasoning.loading" class="mt-8">
-          <LoadingSpinner text="正在进行深度推理，请稍候..." />
-        </div>
-      </transition>
+      <div v-if="loading" class="mt-8 text-center">
+        <p class="text-gold-500/60 text-sm">正在进行深度推理，请稍候...</p>
+      </div>
 
       <!-- 推理链结果 -->
-      <transition
-        enter-active-class="transition-all duration-700 ease-out"
-        enter-from-class="opacity-0 translate-y-8"
-        enter-to-class="opacity-100 translate-y-0"
-      >
-        <div v-if="reasoning.result" class="mt-8 space-y-6">
+      <div v-if="result && !loading" class="mt-8 space-y-6">
           <!-- 总体信息 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">推理概览</h3>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">初始卦</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ reasoning.result?.initialHexagram }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ result?.initialHexagram }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">最终卦</p>
-                <p class="text-gold-400 text-lg font-chinese">{{ reasoning.result?.finalHexagram }}</p>
+                <p class="text-gold-400 text-lg font-chinese">{{ result?.finalHexagram }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">整体置信度</p>
-                <p class="text-gold-400 text-lg">{{ ((reasoning.result?.overallConfidence ?? 0) * 100).toFixed(1) }}%</p>
+                <p class="text-gold-400 text-lg">{{ result?.overallConfidence ?? '-' }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">推理步骤</p>
-                <p class="text-gold-400 text-lg">{{ reasoning.result?.steps?.length ?? 0 }}</p>
+                <p class="text-gold-400 text-lg">{{ result?.steps?.length ?? 0 }}</p>
               </div>
             </div>
           </div>
@@ -156,7 +117,7 @@
             <h3 class="text-gold-500 font-medium mb-4">推理链</h3>
             <div class="space-y-4">
               <div
-                v-for="step in reasoning.result?.steps ?? []"
+                v-for="step in result?.steps ?? []"
                 :key="step.stepNumber"
                 class="p-4 rounded-lg border border-gold-500/10 bg-ink-800/30"
               >
@@ -168,7 +129,7 @@
                     <span class="text-gold-500/80 text-sm font-medium">{{ step.stepType }}</span>
                   </div>
                   <span class="text-gold-500/60 text-xs">
-                    置信度: {{ (step.confidence * 100).toFixed(1) }}%
+                    置信度: {{ step.confidence }}
                   </span>
                 </div>
                 <p class="text-gold-500/70 text-sm mb-2">{{ step.logic }}</p>
@@ -185,81 +146,55 @@
             </div>
           </div>
 
-          <!-- 分支点 -->
-          <div v-if="(reasoning.result?.branchPoints?.length ?? 0) > 0" class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
-            <h3 class="text-gold-500 font-medium mb-4">关键分支点</h3>
-            <div class="space-y-3">
-              <div
-                v-for="bp in reasoning.result?.branchPoints ?? []"
-                :key="bp.stepNumber"
-                class="p-3 rounded-lg border border-gold-500/10 bg-ink-800/30"
-              >
-                <p class="text-gold-500/80 text-sm">
-                  <span class="text-gold-400">步骤 {{ bp.stepNumber }}:</span>
-                  {{ bp.reason }}
-                </p>
-                <p class="text-gold-500/50 text-xs mt-1">
-                  选择: {{ bp.chosen }} | 备选: {{ bp.alternatives.join(', ') }}
-                </p>
-              </div>
-            </div>
-          </div>
-
           <!-- 结论 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">推理结论</h3>
-            <p class="text-gold-500/80 text-sm leading-relaxed">{{ reasoning.result?.conclusion }}</p>
+            <p class="text-gold-500/80 text-sm leading-relaxed">{{ result?.conclusion }}</p>
           </div>
 
           <!-- 概率分布 -->
-          <div v-if="Object.keys(reasoning.result?.probabilityDistribution ?? {}).length > 0" class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
+          <div v-if="result?.probabilityDistribution && Object.keys(result.probabilityDistribution).length > 0" class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">概率分布</h3>
             <div class="space-y-2">
               <div
-                v-for="(prob, outcome) in reasoning.result?.probabilityDistribution ?? {}"
-                :key="outcome"
+                v-for="(prob, outcome) in result.probabilityDistribution"
+                :key="String(outcome)"
                 class="flex items-center gap-3"
               >
                 <span class="text-gold-500/70 text-sm w-24">{{ outcome }}</span>
                 <div class="flex-1 h-4 rounded-full bg-ink-800 overflow-hidden">
                   <div
                     class="h-full bg-gradient-to-r from-gold-500/50 to-gold-500 rounded-full transition-all duration-500"
-                    :style="{ width: `${prob * 100}%` }"
+                    :style="{ width: `${Number(prob) * 100}%` }"
                   ></div>
                 </div>
-                <span class="text-gold-500/60 text-xs w-16 text-right">{{ (prob * 100).toFixed(1) }}%</span>
+                <span class="text-gold-500/60 text-xs w-16 text-right">{{ (Number(prob) * 100).toFixed(1) }}%</span>
               </div>
             </div>
           </div>
         </div>
-      </transition>
 
       <!-- 概率树结果 -->
-      <transition
-        enter-active-class="transition-all duration-700 ease-out"
-        enter-from-class="opacity-0 translate-y-8"
-        enter-to-class="opacity-100 translate-y-0"
-      >
-        <div v-if="reasoning.tree?.topPaths" class="mt-8 space-y-6">
+      <div v-if="tree?.topPaths" class="mt-8 space-y-6">
           <!-- 树概览 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">概率树概览</h3>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">最大深度</p>
-                <p class="text-gold-400 text-lg">{{ reasoning.tree?.maxDepth }}</p>
+                <p class="text-gold-400 text-lg">{{ tree?.maxDepth }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">分支因子</p>
-                <p class="text-gold-400 text-lg">{{ reasoning.tree?.branchFactor }}</p>
+                <p class="text-gold-400 text-lg">{{ tree?.branchFactor }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">总路径数</p>
-                <p class="text-gold-400 text-lg">{{ reasoning.tree?.totalPaths }}</p>
+                <p class="text-gold-400 text-lg">{{ tree?.totalPaths }}</p>
               </div>
               <div class="text-center">
                 <p class="text-gold-500/50 text-xs">期望值</p>
-                <p class="text-gold-400 text-lg">{{ reasoning.tree?.expectedValue?.toFixed(2) }}</p>
+                <p class="text-gold-400 text-lg">{{ tree?.expectedValue?.toFixed(2) }}</p>
               </div>
             </div>
           </div>
@@ -267,12 +202,12 @@
           <!-- 风险评估 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
             <h3 class="text-gold-500 font-medium mb-4">风险评估</h3>
-            <p class="text-gold-500/80 text-sm leading-relaxed">{{ reasoning.tree?.riskAssessment }}</p>
+            <p class="text-gold-500/80 text-sm leading-relaxed">{{ tree?.riskAssessment }}</p>
           </div>
 
           <!-- 最优路径 -->
           <div class="p-6 rounded-xl border border-gold-500/20 bg-ink-900/50 backdrop-blur-sm">
-            <h3 class="text-gold-500 font-medium mb-4">最优路径 TOP {{ reasoning.tree?.topPaths?.length }}</h3>
+            <h3 class="text-gold-500 font-medium mb-4">最优路径 TOP {{ tree?.topPaths?.length }}</h3>
             <div class="overflow-x-auto">
               <table class="w-full">
                 <thead>
@@ -286,7 +221,7 @@
                 </thead>
                 <tbody>
                   <tr
-                    v-for="(path, index) in reasoning.tree?.topPaths"
+                    v-for="(path, index) in tree?.topPaths"
                     :key="index"
                     class="border-b border-gold-500/10 hover:bg-gold-500/5"
                   >
@@ -314,42 +249,83 @@
             </div>
           </div>
         </div>
-      </transition>
     </ResponsiveContainer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useReasoning } from '~/composables/useReasoning'
+import { useApi } from '~/composables/useApi'
 import { useNotification } from '~/composables/useNotification'
 
-definePageMeta({})
+definePageMeta({ ssr: false })
 
-const reasoning = useReasoning()
+const api = useApi()
 const notification = useNotification()
 
+// 直接内联状态，不使用 composable
+const loading = ref(false)
+const result = ref<any>(null)
+const tree = ref<any>(null)
 const hexagramName = ref('')
 const questionType = ref('general')
 const monthBranch = ref('')
 const error = ref<string | null>(null)
 
+const questionTypeOptions = [
+  { value: 'career', label: '事业' },
+  { value: 'wealth', label: '财运' },
+  { value: 'love', label: '感情' },
+  { value: 'health', label: '健康' },
+  { value: 'general', label: '综合' },
+]
+
+const monthBranchOptions = [
+  { value: '', label: '自动' },
+  { value: '子', label: '子' },
+  { value: '丑', label: '丑' },
+  { value: '寅', label: '寅' },
+  { value: '卯', label: '卯' },
+  { value: '辰', label: '辰' },
+  { value: '巳', label: '巳' },
+  { value: '午', label: '午' },
+  { value: '未', label: '未' },
+  { value: '申', label: '申' },
+  { value: '酉', label: '酉' },
+  { value: '戌', label: '戌' },
+  { value: '亥', label: '亥' },
+]
+
 const canSubmit = computed(() => hexagramName.value.trim().length > 0)
 
 async function handleDeepReason() {
   if (!canSubmit.value) return
-
   error.value = null
+  loading.value = true
+  result.value = null
 
   try {
-    await reasoning.deepReason({
-      hexagram_name: hexagramName.value,
-      question_type: questionType.value,
-      month_branch: monthBranch.value || undefined,
-      max_steps: 10,
-    })
+    const { data, error: apiError } = await api.request<{ success: boolean; data: any }>(
+      '/api/reasoning/deep',
+      {
+        method: 'POST',
+        body: {
+          hexagram_name: hexagramName.value,
+          question_type: questionType.value,
+          month_branch: monthBranch.value || undefined,
+          max_steps: 10,
+        },
+      }
+    )
+    loading.value = false
+
+    if (apiError || !data?.success) {
+      throw new Error(apiError || '深度推理失败')
+    }
+    result.value = data.data
     notification.success('推理完成', '深度推理已完成，请查看结果')
   } catch (err) {
+    loading.value = false
     error.value = err instanceof Error ? err.message : '推理失败'
     notification.error('推理失败', error.value)
   }
@@ -357,18 +333,32 @@ async function handleDeepReason() {
 
 async function handleBuildTree() {
   if (!canSubmit.value) return
-
   error.value = null
+  loading.value = true
+  tree.value = null
 
   try {
-    await reasoning.buildTree({
-      hexagram_name: hexagramName.value,
-      question_type: questionType.value,
-      month_branch: monthBranch.value || undefined,
-      max_depth: 5,
-    })
+    const { data, error: apiError } = await api.request<{ success: boolean; data: any }>(
+      '/api/reasoning/tree',
+      {
+        method: 'POST',
+        body: {
+          hexagram_name: hexagramName.value,
+          question_type: questionType.value,
+          month_branch: monthBranch.value || undefined,
+          max_depth: 5,
+        },
+      }
+    )
+    loading.value = false
+
+    if (apiError || !data?.success) {
+      throw new Error(apiError || '构建概率树失败')
+    }
+    tree.value = data.data
     notification.success('构建完成', '概率树已生成，请查看结果')
   } catch (err) {
+    loading.value = false
     error.value = err instanceof Error ? err.message : '构建概率树失败'
     notification.error('构建失败', error.value)
   }

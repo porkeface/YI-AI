@@ -18,6 +18,7 @@ from ai.llm_client import LLMClient, LLMConfig, LLMError
 from ai.memory.engine import MemoryEngine
 from ai.memory.types import MemoryType
 from ai.rag_fusion import RAGFusion
+from foundation.hexagram_engine import HexagramEngine
 
 logger = logging.getLogger(__name__)
 
@@ -307,10 +308,28 @@ def _rule_analyze(state: AgentState) -> dict:
     """
     hexagram_data = state.get("hexagram_data")
     if not hexagram_data:
-        return {"rule_analysis": None}
+        return {"rule_analysis": None, "rule_analysis_result": None}
 
     # 规则分析结果已经在hexagram_data中（由前端传入或API预计算）
-    return {"rule_analysis": hexagram_data.get("analysis")}
+    rule_analysis_dict = hexagram_data.get("analysis")
+
+    # Also perform real analysis to get a proper RuleAnalysisResult object
+    # This is needed for evolution simulation which requires the typed object
+    rule_analysis_result = None
+    hexagram_name = hexagram_data.get("name", "")
+    if hexagram_name:
+        try:
+            from rule_engine.analyzer import Analyzer
+            month_branch = state.get("month_branch", "子")
+            hexagram = HexagramEngine.get_by_name(hexagram_name)
+            rule_analysis_result = Analyzer.analyze(hexagram, "通用", month_branch)
+        except Exception as e:
+            logger.warning(f"Real rule analysis failed, using dict only: {e}")
+
+    return {
+        "rule_analysis": rule_analysis_dict,
+        "rule_analysis_result": rule_analysis_result,
+    }
 
 
 def _rag_retrieve(state: AgentState) -> dict:
@@ -507,7 +526,7 @@ def _generate_fallback_interpretation(hexagram_data: dict, user_query: str) -> s
 def _evolution_simulate(state: AgentState) -> dict:
     """推演模拟节点
 
-    执行卦象推演。
+    执行卦象推演。使用真实的规则分析结果而非硬编码假数据。
     """
     hexagram_data = state.get("hexagram_data")
     if not hexagram_data:
@@ -517,8 +536,17 @@ def _evolution_simulate(state: AgentState) -> dict:
     if not hexagram_name:
         return {"inference_result": None}
 
+    # Use real analysis from state instead of fake data
+    analysis = state.get("rule_analysis_result")
+    month_branch = state.get("month_branch", "子")
+
     try:
-        result = AgentTools.simulate_evolution_chain(hexagram_name, steps=3)
+        result = AgentTools.simulate_evolution_chain(
+            hexagram_name,
+            analysis=analysis,
+            month_branch=month_branch,
+            steps=3,
+        )
         if result.success:
             return {"inference_result": result.data}
         return {"inference_result": None}

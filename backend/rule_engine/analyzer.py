@@ -70,7 +70,7 @@ class Analyzer:
 
         # 4. 综合推断吉凶
         verdict = cls._judge_verdict(
-            hexagram, yong_shen, sheng_ke, wang_shuai
+            hexagram, yong_shen, sheng_ke, wang_shuai, month_branch
         )
 
         # 5. 收集动爻位置
@@ -96,6 +96,7 @@ class Analyzer:
         yong_shen: SixRelation,
         sheng_ke: RelationshipAnalysis,
         wang_shuai: ProsperityAnalysis,
+        month_branch: str,
     ) -> Verdict:
         """综合推断吉凶
 
@@ -110,6 +111,7 @@ class Analyzer:
             yong_shen: 用神六亲
             sheng_ke: 生克分析结果
             wang_shuai: 旺衰分析结果
+            month_branch: 月份地支（如"子"、"寅"等）
 
         Returns:
             占卜结论
@@ -149,10 +151,7 @@ class Analyzer:
 
         # 世爻旺衰（通过月令判断世爻五行）
         shi_element = sheng_ke.shi_element
-        shi_prosperity = ElementEngine.judge_prosperity(
-            shi_element,
-            cls._get_month_branch_from_element(wang_shuai.month_element),
-        )
+        shi_prosperity = ElementEngine.judge_prosperity(shi_element, month_branch)
         if shi_prosperity == ProsperityState.WANG:
             score += 10
         elif shi_prosperity == ProsperityState.XIANG:
@@ -191,12 +190,25 @@ class Analyzer:
     def _get_month_branch_from_element(cls, element: Element) -> str:
         """从月令五行推断一个代表性的地支
 
+        .. deprecated::
+            此方法存在信息丢失问题（一个五行对应多地支，只能返回其中一个）。
+            请直接传入 ``month_branch`` 参数。将在未来版本移除。
+
         Args:
             element: 五行属性
 
         Returns:
             代表性地支
         """
+        import warnings
+
+        warnings.warn(
+            "_get_month_branch_from_element() is deprecated: "
+            "it loses information because an element maps to 2-3 branches. "
+            "Pass the original month_branch instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         element_to_branch = {
             Element.WATER: "子",
             Element.EARTH: "丑",

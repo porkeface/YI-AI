@@ -177,6 +177,13 @@ class QiMenEngine:
     # 非中宫序列（阅读顺序：左→右、上→下）
     _NON_CENTER: list[int] = [1, 2, 3, 4, 6, 7, 8, 9]
 
+    # 宫位编号对应的地支（用于空亡/马星匹配）
+    # 坎一宫→子，坤二宫→未，震三宫→卯，巽四宫→辰，
+    # 中五宫→未（寄坤），乾六宫→戌，兑七宫→酉，艮八宫→丑，离九宫→午
+    _PALACE_BRANCHES: tuple[str, ...] = (
+        "", "子", "未", "卯", "辰", "未", "戌", "酉", "丑", "午",
+    )
+
     # 天干相冲对（用于反吟判断）
     _CLASH_PAIRS: frozenset[tuple[str, str]] = frozenset({
         ("甲", "庚"), ("庚", "甲"), ("乙", "辛"), ("辛", "乙"),
@@ -446,6 +453,22 @@ class QiMenEngine:
             score -= 5
         if ys.is_fanin:
             score -= 10
+
+        # 空亡影响：空亡宫位的门/星/神力量减半
+        xun_kong_set = set(chart.xun_kong)
+        branches = cls._PALACE_BRANCHES
+        for palace_idx, _ in enumerate(chart.palace_info):
+            palace_branch = branches[palace_idx + 1] if palace_idx + 1 < len(branches) else ""
+            if palace_branch and palace_branch in xun_kong_set:
+                score -= 5
+
+        # 马星宫位加分（主动、变动）
+        if chart.ma_xing:
+            for palace_idx, _ in enumerate(chart.palace_info):
+                palace_branch = branches[palace_idx + 1] if palace_idx + 1 < len(branches) else ""
+                if palace_branch == chart.ma_xing:
+                    score += 8
+
         score = max(0, min(100, score))
 
         if score >= 65:
@@ -455,6 +478,33 @@ class QiMenEngine:
         else:
             overall, trend = "平", "平稳"
 
+        # 动态置信度：基于用神宫单项评分的清晰程度
+        yong_shen_idx = None
+        for i, p in enumerate(chart.palace_info):
+            if p is ys:
+                yong_shen_idx = i
+                break
+
+        if yong_shen_idx is not None:
+            yong_score = 0
+            yong_score += {QMDoor.KAI: 20, QMDoor.SHENG: 20, QMDoor.XIU: 15,
+                           QMDoor.JING: 5, QMDoor.DU: -5, QMDoor.SHANG: -15,
+                           QMDoor.SI_GATE: -20, QMDoor.JING_GATE: -10}.get(ys.door, 0)
+            yong_score += {QMStar.TIANXIN: 15, QMStar.TIANREN: 15, QMStar.TIANFU: 15,
+                           QMStar.TIANPENG: 10, QMStar.TIANCHONG: 5, QMStar.TIANQIN: 5,
+                           QMStar.TIANZHU: -10, QMStar.TIANYING: -10,
+                           QMStar.TIANRUI: -15}.get(ys.star, 0)
+            yong_score += {QMSpirit.ZHIFU: 15, QMSpirit.TAIBAI: 10, QMSpirit.LIUHE: 10,
+                           QMSpirit.JIUTIAN: 10, QMSpirit.JIUDE: 10, QMSpirit.TENGHE: -10,
+                           QMSpirit.BAIHU: -15, QMSpirit.XUANWU: -15}.get(ys.spirit, 0)
+            if ys.is_fuxing:
+                yong_score -= 5
+            if ys.is_fanin:
+                yong_score -= 10
+            confidence = max(40, min(90, 50 + abs(yong_score)))
+        else:
+            confidence = 50
+
         parts = [f"用神落{ys.palace.value}", f"临{ys.door.value}门",
                  ys.star.value, ys.spirit.value]
         if ys.is_fuxing:
@@ -462,11 +512,22 @@ class QiMenEngine:
         if ys.is_fanin:
             parts.append("反吟")
 
+        # 描述中补充空亡/马星信息
+        yong_branch = ""
+        for pb_idx, pb in enumerate(chart.palace_info):
+            if pb is ys:
+                yong_branch = branches[pb_idx + 1] if pb_idx + 1 < len(branches) else ""
+                break
+        if yong_branch and yong_branch in xun_kong_set:
+            parts.append("落空亡")
+        if yong_branch and yong_branch == chart.ma_xing:
+            parts.append("临马星")
+
         return QMAnalysis(
             yong_shen_palace=ys.palace, yong_shen_door=ys.door,
             yong_shen_star=ys.star, description="，".join(parts),
             verdict=Verdict(overall=overall, strength=score,
-                            trend=trend, confidence=70),
+                            trend=trend, confidence=confidence),
         )
 
     @classmethod

@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from math import ceil
+from typing import Any
 
 from foundation.types import Verdict
 
@@ -133,6 +134,7 @@ class ZiWeiEngine:
     """紫微斗数引擎，所有方法为 classmethod，无需实例化。"""
 
     BRANCHES = "子丑寅卯辰巳午未申酉戌亥"
+    STEMS = "甲乙丙丁戊己庚辛壬癸"
     _PALACE_NAMES = ("命宫", "兄弟", "夫妻", "子女", "财帛", "疾厄",
                      "迁移", "奴仆", "官禄", "田宅", "福德", "父母")
 
@@ -308,7 +310,8 @@ class ZiWeiEngine:
         """
         type_map = {"事业": "官禄", "财运": "财帛", "感情": "夫妻", "健康": "疾厄", "人际": "奴仆"}
         target_name = type_map.get(question_type, "命宫")
-        target = next((p for p in chart.palaces if p.palace.value == target_name), chart.palaces[0])
+        target_idx = cls._PALACE_NAMES.index(target_name)
+        target = chart.palaces[target_idx]
 
         # 评分
         score = 60
@@ -322,6 +325,11 @@ class ZiWeiEngine:
         hua_list = list(target.hua_stars)
         for h in hua_list:
             score += {"化禄": 10, "化权": 8, "化科": 6, "化忌": -12}.get(h.value, 0)
+
+        # 三方四正分析
+        three_harmony = cls.analyze_three_harmony(chart, target_idx)
+        score += three_harmony["total_score"]
+
         score = max(0, min(100, score))
 
         # 描述
@@ -338,8 +346,156 @@ class ZiWeiEngine:
             target_palace=target.palace, main_stars=target.main_stars,
             hua_influence=tuple(hua_list),
             description="；".join(parts) if parts else "该宫为空宫",
-            verdict=Verdict(overall=overall, strength=score, trend=trend, confidence=70),
+            verdict=Verdict(overall=overall, strength=score, trend=trend,
+                          confidence=max(40, min(90, 50 + abs(score)))),
         )
+
+    @classmethod
+    def calculate_major_periods(
+        cls, chart: ZWChart, num_periods: int = 8
+    ) -> list[dict[str, Any]]:
+        """计算大运（每10年一个大运）
+
+        大运起法：
+        1. 从命宫开始，阳男阴女顺行，阴男阳女逆行
+        2. 每个大运10年
+        3. 大运宫位的主星影响该10年运势
+
+        Returns:
+            大运列表，每个包含: period_num, start_age, end_age, palace_name,
+            main_stars, brightness, transformations
+        """
+        ming_palace_idx = cls._PALACE_NAMES.index(chart.ming_palace.value)
+        year_stem = chart.year_gan_zhi[0]
+
+        # 判断阴阳：甲丙戊庚壬为阳，乙丁己辛癸为阴
+        yang_stems = {"甲", "丙", "戊", "庚", "壬"}
+        is_yang = year_stem in yang_stems
+        is_male = chart.gender == "男"
+
+        # 阳男阴女顺行，阴男阳女逆行
+        direction = 1 if (is_yang == is_male) else -1
+
+        periods = []
+        current_age = 1
+
+        for i in range(num_periods):
+            palace_idx = (ming_palace_idx + i * direction) % 12
+            palace_name = cls._PALACE_NAMES[palace_idx]
+            palace = chart.palaces[palace_idx]
+
+            # 该宫位的主星及亮度
+            main_stars = []
+            for j, star in enumerate(palace.main_stars):
+                brightness = palace.brightness[j] if j < len(palace.brightness) else "平"
+                main_stars.append({"star": star.value, "brightness": brightness})
+
+            # 该大运的四化（用大运天干推算）
+            period_stem_idx = (cls.STEMS.index(year_stem) + i) % 10
+            period_stem = cls.STEMS[period_stem_idx]
+            sihua = cls._SIHUA.get(period_stem, ())
+            hua_names = ("化禄", "化权", "化科", "化忌")
+            transformations = {
+                hua_names[j]: sihua[j]
+                for j in range(4) if j < len(sihua)
+            } if sihua else {}
+
+            periods.append({
+                "period_num": i + 1,
+                "start_age": current_age,
+                "end_age": current_age + 9,
+                "palace_name": palace_name,
+                "palace_index": palace_idx,
+                "main_stars": main_stars,
+                "transformations": transformations,
+            })
+            current_age += 10
+
+        return periods
+
+    @classmethod
+    def analyze_three_harmony(
+        cls, chart: ZWChart, target_palace: int
+    ) -> dict[str, Any]:
+        """三方四正分析
+
+        命宫三方：命宫 + 财帛宫 + 官禄宫
+        四正：命宫 + 迁移宫（对宫）
+
+        Args:
+            target_palace: 目标宫位索引 (0-11)，对应 _PALACE_NAMES 的顺序
+
+        Returns:
+            三方四正分析结果
+        """
+        # 三方：target, target+4, target+8 (每隔4宫)
+        three_harmony = [
+            target_palace,
+            (target_palace + 4) % 12,
+            (target_palace + 8) % 12,
+        ]
+        # 四正：对宫
+        opposite = (target_palace + 6) % 12
+        four_square = three_harmony + [opposite]
+
+        # 获取年干四化
+        year_stem = chart.year_gan_zhi[0]
+        sihua = cls._SIHUA.get(year_stem, ())
+        hua_names = ("化禄", "化权", "化科", "化忌")
+        sihua_map: dict[str, str] = {}
+        if sihua:
+            for j, h_name in enumerate(hua_names):
+                if j < len(sihua):
+                    sihua_map[sihua[j]] = h_name
+
+        analysis: dict[str, Any] = {
+            "target_palace": cls._PALACE_NAMES[target_palace],
+            "three_harmony": [],
+            "opposite_palace": cls._PALACE_NAMES[opposite],
+            "total_score": 0,
+        }
+
+        for p_idx in four_square:
+            palace_name = cls._PALACE_NAMES[p_idx]
+            palace = chart.palaces[p_idx]
+
+            stars = []
+            for j, star in enumerate(palace.main_stars):
+                brightness = palace.brightness[j] if j < len(palace.brightness) else "平"
+                stars.append({"star": star.value, "brightness": brightness})
+
+            # 计算该宫得分
+            palace_score = 0
+            for s in stars:
+                br = s["brightness"]
+                if br in ("庙", "旺"):
+                    palace_score += 8
+                elif br in ("得", "利"):
+                    palace_score += 4
+                elif br in ("不", "陷"):
+                    palace_score -= 8
+
+            # 四化加分
+            for hua_star_name, hua_type in sihua_map.items():
+                if any(s["star"] == hua_star_name for s in stars):
+                    if hua_type == "化禄":
+                        palace_score += 10
+                    elif hua_type == "化权":
+                        palace_score += 8
+                    elif hua_type == "化科":
+                        palace_score += 6
+                    elif hua_type == "化忌":
+                        palace_score -= 12
+
+            analysis["three_harmony"].append({
+                "palace": palace_name,
+                "is_opposite": p_idx == opposite,
+                "stars": stars,
+                "score": palace_score,
+            })
+            analysis["total_score"] += palace_score
+
+        return analysis
 
     # ---- 内部方法 ----
 

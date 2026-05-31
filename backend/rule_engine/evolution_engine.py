@@ -24,30 +24,9 @@ from foundation.types import (
 )
 from foundation.hexagram_engine import HexagramEngine
 from foundation.element_engine import ElementEngine
+from rule_engine.types import InferenceProbabilities
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class InferenceProbabilities:
-    """推演概率配置
-
-    与 inference_engine 保持一致的概率配置，确保两个引擎使用相同的概率值。
-
-    Attributes:
-        changed_base: 变卦路径基础概率
-        changed_per_moving_penalty: 每个动爻的惩罚系数
-        changed_min: 变卦路径最低概率下限
-        reversed_prob: 综卦路径概率
-        opposite_prob: 错卦路径概率
-        interlock_prob: 互卦路径概率
-    """
-    changed_base: float = 1.0
-    changed_per_moving_penalty: float = 0.15
-    changed_min: float = 0.3
-    reversed_prob: float = 0.6
-    opposite_prob: float = 0.3
-    interlock_prob: float = 0.5
 
 
 # 模块级默认概率配置
@@ -149,6 +128,7 @@ class EvolutionEngine:
         analysis: RuleAnalysisResult | None = None,
         max_depth: int = 5,
         branch_factor: int = 3,
+        month_branch: str = "子",
     ) -> EvolutionResult:
         """执行深度推演
 
@@ -157,6 +137,7 @@ class EvolutionEngine:
             analysis: 规则分析结果（可选）
             max_depth: 最大推演深度（默认5，最大10）
             branch_factor: 分支因子（默认3）
+            month_branch: 月份地支（默认"子"）
 
         Returns:
             推演结果
@@ -166,7 +147,7 @@ class EvolutionEngine:
 
         # 构建概率树
         root = EvolutionEngine._build_tree(
-            hexagram, analysis, depth, bf, 1.0, 0
+            hexagram, analysis, depth, bf, 1.0, 0, month_branch
         )
 
         # 统计节点数
@@ -217,6 +198,7 @@ class EvolutionEngine:
         branch_factor: int,
         cumulative_prob: float,
         current_depth: int,
+        month_branch: str = "子",
     ) -> EvolutionNode:
         """递归构建概率树"""
         if current_depth >= max_depth or cumulative_prob < 0.01:
@@ -252,6 +234,7 @@ class EvolutionEngine:
                     branch_factor,
                     child_prob,
                     current_depth + 1,
+                    month_branch,
                 )
 
                 # 创建带转移信息的子节点
@@ -273,7 +256,7 @@ class EvolutionEngine:
         trend = EvolutionEngine._compute_trend(hexagram, children)
 
         # 计算五行力量
-        element_strength = EvolutionEngine._compute_element_strength(hexagram)
+        element_strength = EvolutionEngine._compute_element_strength(hexagram, month_branch)
 
         return EvolutionNode(
             hexagram_name=hexagram.name,
@@ -414,13 +397,49 @@ class EvolutionEngine:
         return "平稳"
 
     @staticmethod
-    def _compute_element_strength(hexagram: Hexagram) -> float:
-        """计算五行力量值"""
+    def _compute_element_strength(hexagram: Hexagram, month_branch: str = "子") -> float:
+        """计算五行力量（基于月令旺衰）
+
+        Args:
+            hexagram: 卦象
+            month_branch: 月份地支
+
+        Returns:
+            0-100 的力量值
+        """
+        from foundation.types import ProsperityState
+
+        # 取上卦五行作为卦的五行
+        upper_element = (
+            hexagram.lines[3].element
+            if len(hexagram.lines) > 3
+            else hexagram.lines[0].element
+        )
+
+        try:
+            prosperity = ElementEngine.judge_prosperity(upper_element, month_branch)
+        except (ValueError, KeyError):
+            prosperity = ProsperityState.XIU
+
+        # 旺衰转力量值
+        strength_map = {
+            ProsperityState.WANG: 90,
+            ProsperityState.XIANG: 70,
+            ProsperityState.XIU: 50,
+            ProsperityState.QIU: 30,
+            ProsperityState.SI: 10,
+        }
+
+        base_strength = strength_map.get(prosperity, 50)
+
+        # 加上阳爻数的微调（每多一个阳爻+2）
         yang_count = sum(
             1 for line in hexagram.lines
-            if line.yin_yang == YinYang.YANG
+            if line.yin_yang.value == "阳"
         )
-        return round(yang_count / 6 * 100, 1)
+        base_strength += (yang_count - 3) * 2  # 3阳为基准
+
+        return max(0.0, min(100.0, round(base_strength, 1)))
 
     @staticmethod
     def _count_nodes(node: EvolutionNode) -> int:

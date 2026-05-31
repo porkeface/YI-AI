@@ -118,19 +118,28 @@ class AgentTools:
             )
 
     @staticmethod
-    def simulate_evolution_chain(hexagram_name: str, steps: int = 3) -> ToolResult:
-        """模拟卦象演化链"""
+    def simulate_evolution_chain(
+        hexagram_name: str,
+        analysis: RuleAnalysisResult | None = None,
+        month_branch: str = "子",
+        steps: int = 3,
+    ) -> ToolResult:
+        """模拟卦象演化链
+
+        Args:
+            hexagram_name: 卦名
+            analysis: 规则分析结果（可选，为None时自动执行真实分析）
+            month_branch: 月建地支（analysis为None时用于分析）
+            steps: 推演深度
+        """
         try:
             hexagram = HexagramEngine.get_by_name(hexagram_name)
-            # Create a minimal analysis for inference
-            from foundation.types import Verdict, SixRelation, ProsperityState
-            analysis = RuleAnalysisResult(
-                yong_shen=SixRelation.BROTHER,
-                moving_lines=(1,),
-                relationships=(),
-                prosperity=ProsperityState.WANG,
-                verdict=Verdict(overall="平", strength=50, trend="平稳", confidence=50),
-            )
+
+            if analysis is None:
+                # Perform real analysis instead of using hardcoded dummy data
+                from rule_engine.analyzer import Analyzer
+                analysis = Analyzer.analyze(hexagram, "通用", month_branch)
+
             result = InferenceEngine.infer(hexagram, analysis, max_depth=steps)
             return ToolResult(
                 tool_name="simulate_evolution_chain",

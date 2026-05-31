@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TypedDict, Annotated, Literal
 from dataclasses import dataclass, field
 
+from foundation.types import RuleAnalysisResult
+
 
 class AgentState(TypedDict, total=False):
     """Agent工作流状态
@@ -14,6 +16,7 @@ class AgentState(TypedDict, total=False):
     hexagram_data: dict | None               # 卦象结构化数据
     session_id: str                          # 会话ID
     user_id: str                             # 用户ID
+    month_branch: str                        # 月建地支
 
     # 意图分类结果
     intent: str                              # divination/trend/learn/evolution
@@ -21,7 +24,8 @@ class AgentState(TypedDict, total=False):
     confidence: float                        # 意图分类置信度
 
     # 规则引擎结果
-    rule_analysis: dict | None               # 规则分析结果
+    rule_analysis: dict | None               # 规则分析结果（dict格式，供LLM使用）
+    rule_analysis_result: RuleAnalysisResult | None  # 规则分析结果（对象格式，供推演使用）
 
     # RAG检索结果
     rag_context: list[str] | None            # RAG检索到的知识条目

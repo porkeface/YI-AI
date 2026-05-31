@@ -14,6 +14,8 @@ class GanZhiEngine:
     提供干支组合查询和纳甲规则功能。
     """
 
+    _DATA_LOADED: bool = False
+
     # 10天干
     STEMS: list[str] = [
         "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"
@@ -77,6 +79,33 @@ class GanZhiEngine:
     }
 
     @classmethod
+    def _ensure_data_loaded(cls) -> None:
+        """从JSON数据文件加载纳甲规则（懒加载）
+
+        成功加载后覆盖硬编码的 NAJIA_RULES，失败时保留硬编码数据。
+        """
+        if cls._DATA_LOADED:
+            return
+        try:
+            from foundation.reference_data import get_najia_rules
+
+            rules_list = get_najia_rules()
+            if rules_list:
+                najia: dict[TrigramName, list[str]] = {}
+                for rule in rules_list:
+                    trigram = TrigramName(rule["trigram"])
+                    position = rule["position"]
+                    gz = rule["heavenly_stem"] + rule["earthly_branch"]
+                    if trigram not in najia:
+                        najia[trigram] = [""] * 6
+                    najia[trigram][position - 1] = gz
+                if najia:
+                    cls.NAJIA_RULES = najia
+        except Exception:
+            pass  # fall back to hardcoded
+        cls._DATA_LOADED = True
+
+    @classmethod
     def get_gan_zhi(cls, stem: str, branch: str) -> str:
         """组合天干地支
 
@@ -109,6 +138,8 @@ class GanZhiEngine:
         Raises:
             ValueError: 如果卦名无效
         """
+        cls._ensure_data_loaded()
+
         # 解析卦名，获取上卦和下卦
         # 卦名格式如"乾为天"、"坤为地"、"水雷屯"等
         upper_name, lower_name = cls._parse_hexagram_name(hexagram_name)

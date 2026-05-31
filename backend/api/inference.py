@@ -34,6 +34,7 @@ async def create_inference(request: InferenceRequest):
     try:
         analysis = Analyzer.analyze(hexagram, request.question_type)
     except Exception:
+        logger.error("analysis_failed_fallback", hexagram_id=request.hexagram_id, exc_info=True)
         # 分析失败时使用默认分析
         from api.divination import _default_analysis_result
         analysis = _default_analysis_result([])

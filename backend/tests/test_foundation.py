@@ -355,5 +355,306 @@ class TestShiYingEngine(unittest.TestCase):
         self.assertEqual(elem, "金")
 
 
+class TestElementEngineProsperity(unittest.TestCase):
+    """旺衰表正确性验证
+
+    验证旺衰表符合《火珠林》规则：
+    春木旺火相水休金囚土死
+    夏火旺土相木休水囚金死
+    秋金旺水相土休火囚木死
+    冬水旺木相金休土囚火死
+    """
+
+    def test_wood_month_prosperity(self) -> None:
+        """春（寅月）：木旺、火相、水休、金囚、土死"""
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.WOOD, "寅"),
+            ProsperityState.WANG,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.FIRE, "寅"),
+            ProsperityState.XIANG,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.WATER, "寅"),
+            ProsperityState.XIU,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.METAL, "寅"),
+            ProsperityState.QIU,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.EARTH, "寅"),
+            ProsperityState.SI,
+        )
+
+    def test_fire_month_prosperity(self) -> None:
+        """夏（午月）：火旺、土相、木休、水囚、金死"""
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.FIRE, "午"),
+            ProsperityState.WANG,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.EARTH, "午"),
+            ProsperityState.XIANG,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.WOOD, "午"),
+            ProsperityState.XIU,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.WATER, "午"),
+            ProsperityState.QIU,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.METAL, "午"),
+            ProsperityState.SI,
+        )
+
+    def test_metal_month_prosperity(self) -> None:
+        """秋（申月）：金旺、水相、土休、火囚、木死"""
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.METAL, "申"),
+            ProsperityState.WANG,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.WATER, "申"),
+            ProsperityState.XIANG,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.EARTH, "申"),
+            ProsperityState.XIU,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.FIRE, "申"),
+            ProsperityState.QIU,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.WOOD, "申"),
+            ProsperityState.SI,
+        )
+
+    def test_water_month_prosperity(self) -> None:
+        """冬（子月）：水旺、木相、金休、土囚、火死"""
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.WATER, "子"),
+            ProsperityState.WANG,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.WOOD, "子"),
+            ProsperityState.XIANG,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.METAL, "子"),
+            ProsperityState.XIU,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.EARTH, "子"),
+            ProsperityState.QIU,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.FIRE, "子"),
+            ProsperityState.SI,
+        )
+
+    def test_earth_month_prosperity(self) -> None:
+        """四季土月（辰月）：土旺、金相、火休、木囚、水死"""
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.EARTH, "辰"),
+            ProsperityState.WANG,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.METAL, "辰"),
+            ProsperityState.XIANG,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.FIRE, "辰"),
+            ProsperityState.XIU,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.WOOD, "辰"),
+            ProsperityState.QIU,
+        )
+        self.assertEqual(
+            ElementEngine.judge_prosperity(Element.WATER, "辰"),
+            ProsperityState.SI,
+        )
+
+
+class TestMonthBreak(unittest.TestCase):
+    """月破判断测试"""
+
+    def test_month_break_clash_pairs(self) -> None:
+        """子午冲、丑未冲、寅申冲、卯酉冲、辰戌冲、巳亥冲"""
+        self.assertTrue(ElementEngine.is_month_break("午", "子"))
+        self.assertTrue(ElementEngine.is_month_break("未", "丑"))
+        self.assertTrue(ElementEngine.is_month_break("申", "寅"))
+        self.assertTrue(ElementEngine.is_month_break("酉", "卯"))
+        self.assertTrue(ElementEngine.is_month_break("戌", "辰"))
+        self.assertTrue(ElementEngine.is_month_break("亥", "巳"))
+
+    def test_month_break_reverse_direction(self) -> None:
+        """反向冲也应判定为月破"""
+        self.assertTrue(ElementEngine.is_month_break("子", "午"))
+        self.assertTrue(ElementEngine.is_month_break("丑", "未"))
+        self.assertTrue(ElementEngine.is_month_break("寅", "申"))
+        self.assertTrue(ElementEngine.is_month_break("卯", "酉"))
+        self.assertTrue(ElementEngine.is_month_break("辰", "戌"))
+        self.assertTrue(ElementEngine.is_month_break("巳", "亥"))
+
+    def test_no_month_break_same(self) -> None:
+        """同支不冲"""
+        self.assertFalse(ElementEngine.is_month_break("子", "子"))
+        self.assertFalse(ElementEngine.is_month_break("寅", "寅"))
+        self.assertFalse(ElementEngine.is_month_break("午", "午"))
+
+    def test_no_month_break_non_clash(self) -> None:
+        """非冲关系不判定为月破"""
+        self.assertFalse(ElementEngine.is_month_break("子", "寅"))
+        self.assertFalse(ElementEngine.is_month_break("丑", "卯"))
+        self.assertFalse(ElementEngine.is_month_break("巳", "申"))
+
+
+class TestGuaShen(unittest.TestCase):
+    """卦身推导测试
+
+    依据《火珠林》：
+    "阳世则从子月起，阴世还当午月生"
+    """
+
+    def _create_hexagram_with_shi(
+        self, name: str, shi_position: int
+    ) -> Hexagram:
+        """创建带世爻信息的卦"""
+        hexagram = HexagramEngine.get_by_name(name)
+        new_lines = []
+        for i, line in enumerate(hexagram.lines):
+            pos = i + 1
+            new_lines.append(Line(
+                position=pos,
+                yin_yang=line.yin_yang,
+                is_moving=False,
+                element=line.element,
+                six_relation=line.six_relation,
+                six_spirit=line.six_spirit,
+                gan_zhi=line.gan_zhi,
+                is_shi=(pos == shi_position),
+                is_ying=(pos == (shi_position + 3 if shi_position + 3 <= 6 else shi_position - 3)),
+            ))
+        return Hexagram(
+            id=hexagram.id,
+            name=hexagram.name,
+            upper_trigram=hexagram.upper_trigram,
+            lower_trigram=hexagram.lower_trigram,
+            lines=tuple(new_lines),  # type: ignore[arg-type]
+            element=hexagram.element,
+            judgment=hexagram.judgment,
+            image=hexagram.image,
+        )
+
+    def test_gua_shen_yang_shi_from_zi(self) -> None:
+        """阳世则从子月起：世爻为阳，月支=子时，卦身在第6爻"""
+        # 乾为天，六爻皆阳，世在六爻（阳）
+        hexagram = self._create_hexagram_with_shi("乾为天", shi_position=6)
+        # 月支=子，从子起数到子，count=0->12, 12%6=0->6
+        result = SixRelationEngine.find_gua_shen(hexagram, "子")
+        self.assertEqual(result, 6)
+
+    def test_gua_shen_yang_shi_chou(self) -> None:
+        """阳世，月支=丑时，卦身在第1爻"""
+        hexagram = self._create_hexagram_with_shi("乾为天", shi_position=6)
+        # 从子起数到丑，count=1
+        result = SixRelationEngine.find_gua_shen(hexagram, "丑")
+        self.assertEqual(result, 1)
+
+    def test_gua_shen_yang_shi_wu(self) -> None:
+        """阳世，月支=午时，卦身在第6爻"""
+        hexagram = self._create_hexagram_with_shi("乾为天", shi_position=6)
+        # 从子起数到午，count=6
+        result = SixRelationEngine.find_gua_shen(hexagram, "午")
+        self.assertEqual(result, 6)
+
+    def test_gua_shen_yin_shi_from_wu(self) -> None:
+        """阴世还当午月起：世爻为阴，月支=午时，卦身在第6爻"""
+        # 坤为地，六爻皆阴，世在六爻（阴）
+        hexagram = self._create_hexagram_with_shi("坤为地", shi_position=6)
+        # 从午起数到午，count=0->12, 12%6=0->6
+        result = SixRelationEngine.find_gua_shen(hexagram, "午")
+        self.assertEqual(result, 6)
+
+    def test_gua_shen_yin_shi_wei(self) -> None:
+        """阴世，月支=未时，卦身在第1爻"""
+        hexagram = self._create_hexagram_with_shi("坤为地", shi_position=6)
+        # 从午起数到未，count=1
+        result = SixRelationEngine.find_gua_shen(hexagram, "未")
+        self.assertEqual(result, 1)
+
+    def test_gua_shen_no_shi_returns_none(self) -> None:
+        """无世爻时返回None"""
+        hexagram = HexagramEngine.get_by_name("乾为天")
+        # 默认无世爻
+        result = SixRelationEngine.find_gua_shen(hexagram, "子")
+        self.assertIsNone(result)
+
+    def test_gua_shen_invalid_branch(self) -> None:
+        """无效地支返回None"""
+        hexagram = self._create_hexagram_with_shi("乾为天", shi_position=6)
+        result = SixRelationEngine.find_gua_shen(hexagram, "无效")
+        self.assertIsNone(result)
+
+
+class TestGanZhiAccuracy(unittest.TestCase):
+    """干支转换准确性测试"""
+
+    def test_time_to_gan_zhi_known_date(self) -> None:
+        """测试2024年1月1日12时的干支"""
+        result = GanZhiEngine.time_to_gan_zhi(2024, 1, 1, 12)
+        self.assertIn("year", result)
+        self.assertIn("month", result)
+        self.assertIn("day", result)
+        self.assertIn("hour", result)
+        # 2024年是甲辰年
+        self.assertEqual(result["year"], "甲辰")
+
+    def test_time_to_gan_zhi_2025(self) -> None:
+        """2025年应为乙巳年"""
+        result = GanZhiEngine.time_to_gan_zhi(2025, 1, 1, 12)
+        self.assertEqual(result["year"], "乙巳")
+
+    def test_time_to_gan_zhi_2023(self) -> None:
+        """2023年应为癸卯年"""
+        result = GanZhiEngine.time_to_gan_zhi(2023, 1, 1, 12)
+        self.assertEqual(result["year"], "癸卯")
+
+    def test_najia_rules_loaded(self) -> None:
+        """验证纳甲规则已加载（8个卦，每卦6爻）"""
+        najia = GanZhiEngine.NAJIA_RULES
+        self.assertEqual(len(najia), 8)
+        for trigram, rules in najia.items():
+            self.assertEqual(len(rules), 6)
+
+    def test_najia_qian_ganzhi_format(self) -> None:
+        """验证乾卦纳甲干支格式正确"""
+        najia = GanZhiEngine.NAJIA_RULES
+        qian_rules = najia[TrigramName.QIAN]
+        # 初爻甲子
+        self.assertEqual(qian_rules[0], "甲子")
+        # 每个干支都是2个字符
+        for gz in qian_rules:
+            self.assertEqual(len(gz), 2)
+
+    def test_jiazi_table_60(self) -> None:
+        """60甲子表应有60个"""
+        table = GanZhiEngine.get_jiazi_table()
+        self.assertEqual(len(table), 60)
+
+    def test_jiazi_table_order(self) -> None:
+        """60甲子表顺序正确"""
+        table = GanZhiEngine.get_jiazi_table()
+        self.assertEqual(table[0], "甲子")
+        self.assertEqual(table[1], "乙丑")
+        self.assertEqual(table[59], "癸亥")
+
+
 if __name__ == "__main__":
     unittest.main()

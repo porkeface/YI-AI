@@ -36,6 +36,32 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
+class InferenceProbabilities:
+    """推演概率配置
+
+    将推演引擎中使用的概率值集中管理，便于调优和一致性保证。
+
+    Attributes:
+        changed_base: 变卦路径基础概率（动爻数为0时的理论概率）
+        changed_per_moving_penalty: 每个动爻的惩罚系数
+        changed_min: 变卦路径最低概率下限
+        reversed_prob: 综卦路径概率
+        opposite_prob: 错卦路径概率
+        interlock_prob: 互卦路径概率
+    """
+    changed_base: float = 1.0
+    changed_per_moving_penalty: float = 0.15
+    changed_min: float = 0.3
+    reversed_prob: float = 0.6
+    opposite_prob: float = 0.3
+    interlock_prob: float = 0.5
+
+
+# 模块级默认概率配置
+DEFAULT_PROBABILITIES = InferenceProbabilities()
+
+
+@dataclass(frozen=True)
 class TransitionStep:
     """推演步骤
 
@@ -222,7 +248,10 @@ class InferenceEngine:
                 break
 
             # 计算转移概率（动爻越多，变化越大，概率越分散）
-            prob = max(0.3, 1.0 - len(moving) * 0.15)
+            prob = max(
+                DEFAULT_PROBABILITIES.changed_min,
+                DEFAULT_PROBABILITIES.changed_base - len(moving) * DEFAULT_PROBABILITIES.changed_per_moving_penalty,
+            )
 
             trigger_desc = "、".join(f"{p}爻动" for p in moving)
             step = TransitionStep(
@@ -286,7 +315,7 @@ class InferenceEngine:
             to_hexagram=reversed_hex.name,
             trigger="视角转换",
             relation="综卦",
-            probability=0.6,
+            probability=DEFAULT_PROBABILITIES.reversed_prob,
             description=f"从另一个视角看，{hexagram.name}的综卦是{reversed_hex.name}",
         )
 
@@ -298,7 +327,7 @@ class InferenceEngine:
             steps=(step,),
             final_hexagram=reversed_hex.name,
             overall_trend=trend,
-            path_probability=0.6,
+            path_probability=DEFAULT_PROBABILITIES.reversed_prob,
             summary=f"换位思考：{hexagram.name}↔{reversed_hex.name}",
         )
 
@@ -330,7 +359,7 @@ class InferenceEngine:
             to_hexagram=opposite_hex.name,
             trigger="对立面分析",
             relation="错卦",
-            probability=0.3,
+            probability=DEFAULT_PROBABILITIES.opposite_prob,
             description=f"{hexagram.name}的对立面是{opposite_hex.name}，代表可能的极端情况",
         )
 
@@ -342,7 +371,7 @@ class InferenceEngine:
             steps=(step,),
             final_hexagram=opposite_hex.name,
             overall_trend=trend,
-            path_probability=0.3,
+            path_probability=DEFAULT_PROBABILITIES.opposite_prob,
             summary=f"风险评估：最坏情况为{opposite_hex.name}",
         )
 
@@ -374,7 +403,7 @@ class InferenceEngine:
             to_hexagram=interlock_hex.name,
             trigger="内在本质",
             relation="互卦",
-            probability=0.5,
+            probability=DEFAULT_PROBABILITIES.interlock_prob,
             description=f"{hexagram.name}的内在本质是{interlock_hex.name}",
         )
 
@@ -386,7 +415,7 @@ class InferenceEngine:
             steps=(step,),
             final_hexagram=interlock_hex.name,
             overall_trend=trend,
-            path_probability=0.5,
+            path_probability=DEFAULT_PROBABILITIES.interlock_prob,
             summary=f"深层分析：{hexagram.name}内在本质为{interlock_hex.name}",
         )
 

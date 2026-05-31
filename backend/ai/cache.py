@@ -13,6 +13,10 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Any
 
+import structlog
+
+logger = structlog.get_logger(__name__)
+
 
 @dataclass
 class CacheStats:
@@ -126,7 +130,7 @@ class MultiLevelCache:
                     self._stats.hits += 1
                     return value
             except Exception:
-                pass  # Redis 不可用时静默降级
+                logger.debug("cache_l2_get_failed", key=key, exc_info=True)
 
         self._stats.misses += 1
         return None
@@ -145,7 +149,7 @@ class MultiLevelCache:
                     json.dumps(value, ensure_ascii=False),
                 )
             except Exception:
-                pass  # Redis 不可用时静默降级
+                logger.debug("cache_l2_set_failed", key=key, exc_info=True)
 
     async def delete(self, key: str) -> None:
         """删除：同时清除 L1 和 L2"""
@@ -154,7 +158,7 @@ class MultiLevelCache:
             try:
                 await self._redis.delete(key)
             except Exception:
-                pass
+                logger.debug("cache_l2_delete_failed", key=key, exc_info=True)
 
     async def invalidate_pattern(self, pattern: str) -> int:
         """按模式失效缓存（glob 风格: * 匹配任意字符）"""
@@ -178,7 +182,7 @@ class MultiLevelCache:
                     if cursor == 0:
                         break
             except Exception:
-                pass
+                logger.debug("cache_l2_invalidate_failed", pattern=pattern, exc_info=True)
 
         return count
 

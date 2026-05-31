@@ -84,7 +84,7 @@ async def websocket_divination(websocket: WebSocket):
                 "message": "服务器内部错误",
             })
         except Exception:
-            pass
+            logger.error("ws_error_response_failed", exc_info=True)
 
 
 async def _process_divination_ws(

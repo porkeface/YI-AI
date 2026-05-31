@@ -14,6 +14,10 @@ import structlog
 from fastapi import APIRouter
 
 from api.schemas import ApiResponse, DivinationRequest
+from api.hexagram_utils import (
+    get_palace_name as _get_palace_name_shared,
+    hexagram_to_dict as _hexagram_to_dict_shared,
+)
 from foundation.types import (
     Hexagram,
     Line,
@@ -256,63 +260,13 @@ def _enrich_hexagram(
 
 
 def _get_palace_name(hexagram: Hexagram) -> str:
-    """获取卦所属宫位
-
-    Args:
-        hexagram: 卦对象
-
-    Returns:
-        宫名（如"乾"、"坤"等），查不到时返回"未知"
-    """
-    from foundation.shi_ying_engine import ShiYingEngine
-
-    try:
-        palace_full = ShiYingEngine.get_palace(hexagram.name)
-        # palace_full 形如 "乾宫"，去掉"宫"字返回
-        return palace_full.replace("宫", "")
-    except ValueError:
-        return "未知"
+    """获取卦所属宫位（委托给 hexagram_utils）"""
+    return _get_palace_name_shared(hexagram)
 
 
 def _hexagram_to_response(hexagram: Hexagram) -> dict:
-    """将卦对象转换为前端期望的camelCase格式
-
-    Args:
-        hexagram: 卦对象
-
-    Returns:
-        可序列化的字典（camelCase格式）
-    """
-    palace = _get_palace_name(hexagram)
-
-    lines = []
-    for line in hexagram.lines:
-        gan = line.gan_zhi[0] if line.gan_zhi else ""
-        zhi = line.gan_zhi[1] if len(line.gan_zhi) > 1 else ""
-        lines.append({
-            "position": line.position,
-            "yinYang": line.yin_yang.value,
-            "isMoving": line.is_moving,
-            "element": line.element.value,
-            "sixRelation": line.six_relation.value,
-            "sixSpirit": line.six_spirit.value,
-            "ganZhi": {"gan": gan, "zhi": zhi},
-            "isShi": line.is_shi,
-            "isYing": line.is_ying,
-        })
-
-    return {
-        "id": hexagram.id,
-        "name": hexagram.name,
-        "fullName": f"{hexagram.name}（{palace}宫）",
-        "palace": palace,
-        "upperTrigram": hexagram.upper_trigram.name.value,
-        "lowerTrigram": hexagram.lower_trigram.name.value,
-        "lines": lines,
-        "element": hexagram.element.value,
-        "judgment": hexagram.judgment,
-        "image": hexagram.image,
-    }
+    """将卦对象转换为前端期望的camelCase格式（委托给 hexagram_utils）"""
+    return _hexagram_to_dict_shared(hexagram)
 
 
 def _default_analysis_result(moving_positions: list[int]) -> RuleAnalysisResult:

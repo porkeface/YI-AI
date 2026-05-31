@@ -16,6 +16,8 @@ class SixSpiritEngine:
     根据日干排列六神。
     """
 
+    _DATA_LOADED: bool = False
+
     # 六神顺序（固定）
     SPIRIT_ORDER: list[SixSpirit] = [
         SixSpirit.QINGLONG,  # 青龙
@@ -41,6 +43,31 @@ class SixSpiritEngine:
     }
 
     @classmethod
+    def _ensure_data_loaded(cls) -> None:
+        """从JSON数据文件加载六神映射（懒加载）
+
+        成功加载后覆盖硬编码的 _STEM_TO_SPIRIT，失败时保留硬编码数据。
+        """
+        if cls._DATA_LOADED:
+            return
+        try:
+            from foundation.reference_data import get_six_spirit_rules
+
+            rules_list = get_six_spirit_rules()
+            if rules_list:
+                stem_to_spirit: dict[str, SixSpirit] = {}
+                for rule in rules_list:
+                    if rule["line_position"] == 1:
+                        stem = rule["day_stem"]
+                        spirit = SixSpirit(rule["spirit"])
+                        stem_to_spirit[stem] = spirit
+                if stem_to_spirit:
+                    cls._STEM_TO_SPIRIT = stem_to_spirit
+        except Exception:
+            pass  # fall back to hardcoded
+        cls._DATA_LOADED = True
+
+    @classmethod
     def assign(cls, day_stem: str) -> list[SixSpirit]:
         """根据日干分配六神
 
@@ -53,6 +80,7 @@ class SixSpiritEngine:
         Raises:
             ValueError: 如果日干无效
         """
+        cls._ensure_data_loaded()
         start_spirit = cls._STEM_TO_SPIRIT.get(day_stem)
         if start_spirit is None:
             raise ValueError(f"无效的日干：{day_stem}")

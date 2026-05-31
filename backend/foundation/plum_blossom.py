@@ -217,21 +217,24 @@ class PlumBlossomEngine:
         upper_sign: str,
         lower_sign: str,
         sign_type: ExternalSign = ExternalSign.DIRECTION,
+        moving_position: int | None = None,
     ) -> PlumBlossomResult:
         """外应起卦
 
         根据环境中的现象（方位、动物、声音等）起卦。
+        梅花易数要求有动爻才能区分体/用，因此默认初爻动。
 
         Args:
             upper_sign: 上卦对应的外应（如"北"、"龙"等）
             lower_sign: 下卦对应的外应（如"南"、"虎"等）
             sign_type: 外应类型
+            moving_position: 动爻位置（1-6），默认None时取初爻动
 
         Returns:
             梅花易数起卦结果
 
         Raises:
-            ValueError: 无法识别的外应
+            ValueError: 无法识别的外应或动爻位置无效
         """
         sign_map = PlumBlossomEngine._get_sign_map(sign_type)
 
@@ -247,11 +250,19 @@ class PlumBlossomEngine:
                 f"无法从{sign_type.value}推断下卦：'{lower_sign}'"
             )
 
-        # 外应起卦默认无动爻（静卦），或由外部指定
+        # 默认初爻动，确保有动爻区分体/用
+        if moving_position is None:
+            moving_position = 1
+
+        if not (1 <= moving_position <= 6):
+            raise ValueError(
+                f"动爻位置必须在1-6之间，收到: {moving_position}"
+            )
+
         method = f"外应起卦({sign_type.value})：上'{upper_sign}' 下'{lower_sign}'"
 
         return PlumBlossomEngine._build_result(
-            upper_name, lower_name, [], method
+            upper_name, lower_name, [moving_position], method
         )
 
     @staticmethod

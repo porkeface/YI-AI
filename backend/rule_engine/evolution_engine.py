@@ -29,6 +29,32 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
+class InferenceProbabilities:
+    """推演概率配置
+
+    与 inference_engine 保持一致的概率配置，确保两个引擎使用相同的概率值。
+
+    Attributes:
+        changed_base: 变卦路径基础概率
+        changed_per_moving_penalty: 每个动爻的惩罚系数
+        changed_min: 变卦路径最低概率下限
+        reversed_prob: 综卦路径概率
+        opposite_prob: 错卦路径概率
+        interlock_prob: 互卦路径概率
+    """
+    changed_base: float = 1.0
+    changed_per_moving_penalty: float = 0.15
+    changed_min: float = 0.3
+    reversed_prob: float = 0.6
+    opposite_prob: float = 0.3
+    interlock_prob: float = 0.5
+
+
+# 模块级默认概率配置
+DEFAULT_PROBABILITIES = InferenceProbabilities()
+
+
+@dataclass(frozen=True)
 class EvolutionNode:
     """演化树节点
 
@@ -275,7 +301,10 @@ class EvolutionEngine:
                 changed = HexagramEngine.get_changed(
                     hexagram, analysis.moving_lines
                 )
-                prob = max(0.3, 1.0 - len(analysis.moving_lines) * 0.1)
+                prob = max(
+                    DEFAULT_PROBABILITIES.changed_min,
+                    DEFAULT_PROBABILITIES.changed_base - len(analysis.moving_lines) * DEFAULT_PROBABILITIES.changed_per_moving_penalty,
+                )
                 transitions.append(StateTransition(
                     from_state=hexagram.name,
                     to_state=changed.name,
@@ -296,7 +325,7 @@ class EvolutionEngine:
                 from_state=hexagram.name,
                 to_state=reversed_h.name,
                 trigger="视角转换",
-                probability=0.5,
+                probability=DEFAULT_PROBABILITIES.reversed_prob,
                 relation="综卦",
                 element_change=EvolutionEngine._describe_element_change(
                     hexagram, reversed_h
@@ -312,7 +341,7 @@ class EvolutionEngine:
                 from_state=hexagram.name,
                 to_state=opposite.name,
                 trigger="对立面",
-                probability=0.3,
+                probability=DEFAULT_PROBABILITIES.opposite_prob,
                 relation="错卦",
                 element_change=EvolutionEngine._describe_element_change(
                     hexagram, opposite
@@ -328,7 +357,7 @@ class EvolutionEngine:
                 from_state=hexagram.name,
                 to_state=interlock.name,
                 trigger="内在本质",
-                probability=0.4,
+                probability=DEFAULT_PROBABILITIES.interlock_prob,
                 relation="互卦",
                 element_change=EvolutionEngine._describe_element_change(
                     hexagram, interlock
@@ -356,6 +385,7 @@ class EvolutionEngine:
             )
             return f"{from_elem}→{to_elem}（{relation}）"
         except Exception:
+            logger.debug("element_relation_lookup_failed", from_elem=from_elem, to_elem=to_elem, exc_info=True)
             return f"{from_elem}→{to_elem}"
 
     @staticmethod

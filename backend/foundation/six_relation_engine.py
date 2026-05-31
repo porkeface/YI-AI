@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from foundation.types import Element, SixRelation
+from foundation.types import Element, Hexagram, SixRelation
 
 
 class SixRelationEngine:
@@ -120,3 +120,58 @@ class SixRelationEngine:
                 f"无法推导六亲关系：source={source}, target={target}"
             )
         return relation
+
+    # 地支顺序（用于计算卦身）
+    _BRANCH_ORDER: list[str] = [
+        "子", "丑", "寅", "卯", "辰", "巳",
+        "午", "未", "申", "酉", "戌", "亥",
+    ]
+
+    @staticmethod
+    def find_gua_shen(hexagram: Hexagram, month_branch: str) -> int | None:
+        """计算卦身位置
+
+        依据《火珠林》：
+        "阳世则从子月起，阴世还当午月生，此即卦身也。"
+
+        - 世爻为阳：从子起，数到月支，所得序数即为卦身爻位
+        - 世爻为阴：从午起，数到月支，所得序数即为卦身爻位
+
+        Args:
+            hexagram: 卦对象
+            month_branch: 月支（如"子"、"丑"等）
+
+        Returns:
+            卦身所在爻位（1-6），若无法确定则返回 None
+        """
+        branch_order = SixRelationEngine._BRANCH_ORDER
+
+        if month_branch not in branch_order:
+            return None
+
+        # 找到世爻
+        shi_line = None
+        for line in hexagram.lines:
+            if line.is_shi:
+                shi_line = line
+                break
+        if shi_line is None:
+            return None
+
+        # 根据世爻阴阳确定起始地支
+        from foundation.types import YinYang
+        start_branch = "子" if shi_line.yin_yang == YinYang.YANG else "午"
+        start_idx = branch_order.index(start_branch)
+        month_idx = branch_order.index(month_branch)
+
+        # 从起始地支数到月支，步数即为卦身爻位
+        count = (month_idx - start_idx) % 12
+        if count == 0:
+            # 起始支与月支相同，卦身在第12位，取模后为0，映射到第6爻
+            count = 12
+
+        # 卦身爻位 = count，但爻位范围 1-6，超出则取模
+        gua_shen_pos = count if count <= 6 else count % 6
+        if gua_shen_pos == 0:
+            gua_shen_pos = 6
+        return gua_shen_pos

@@ -10,11 +10,24 @@ from __future__ import annotations
 from foundation.types import Element, ProsperityState
 
 
+# 六冲配对：月支冲爻支即为月破
+CLASH_PAIRS: dict[str, str] = {
+    "子": "午", "午": "子",
+    "丑": "未", "未": "丑",
+    "寅": "申", "申": "寅",
+    "卯": "酉", "酉": "卯",
+    "辰": "戌", "戌": "辰",
+    "巳": "亥", "亥": "巳",
+}
+
+
 class ElementEngine:
     """五行引擎
 
     提供五行生克关系查询和旺衰判断功能。
     """
+
+    _DATA_LOADED: bool = False
 
     # 五行相生关系：key生value
     _GENERATES: dict[Element, Element] = {
@@ -56,39 +69,66 @@ class ElementEngine:
         Element.WOOD: {
             Element.WOOD: ProsperityState.WANG,
             Element.FIRE: ProsperityState.XIANG,
-            Element.EARTH: ProsperityState.XIU,
+            Element.EARTH: ProsperityState.SI,
             Element.METAL: ProsperityState.QIU,
-            Element.WATER: ProsperityState.SI,
+            Element.WATER: ProsperityState.XIU,
         },
         Element.FIRE: {
-            Element.WOOD: ProsperityState.SI,
+            Element.WOOD: ProsperityState.XIU,
             Element.FIRE: ProsperityState.WANG,
             Element.EARTH: ProsperityState.XIANG,
-            Element.METAL: ProsperityState.XIU,
+            Element.METAL: ProsperityState.SI,
             Element.WATER: ProsperityState.QIU,
         },
         Element.EARTH: {
             Element.WOOD: ProsperityState.QIU,
-            Element.FIRE: ProsperityState.SI,
+            Element.FIRE: ProsperityState.XIU,
             Element.EARTH: ProsperityState.WANG,
             Element.METAL: ProsperityState.XIANG,
-            Element.WATER: ProsperityState.XIU,
+            Element.WATER: ProsperityState.SI,
         },
         Element.METAL: {
-            Element.WOOD: ProsperityState.XIU,
+            Element.WOOD: ProsperityState.SI,
             Element.FIRE: ProsperityState.QIU,
-            Element.EARTH: ProsperityState.SI,
+            Element.EARTH: ProsperityState.XIU,
             Element.METAL: ProsperityState.WANG,
             Element.WATER: ProsperityState.XIANG,
         },
         Element.WATER: {
             Element.WOOD: ProsperityState.XIANG,
-            Element.FIRE: ProsperityState.XIU,
+            Element.FIRE: ProsperityState.SI,
             Element.EARTH: ProsperityState.QIU,
-            Element.METAL: ProsperityState.SI,
+            Element.METAL: ProsperityState.XIU,
             Element.WATER: ProsperityState.WANG,
         },
     }
+
+    @classmethod
+    def _ensure_data_loaded(cls) -> None:
+        """从JSON数据文件加载五行旺衰表（懒加载）
+
+        成功加载后覆盖硬编码的 _PROSPERITY_TABLE，失败时保留硬编码数据。
+        """
+        if cls._DATA_LOADED:
+            return
+        try:
+            from foundation.reference_data import get_element_prosperity
+
+            prosperity_list = get_element_prosperity()
+            if prosperity_list:
+                table: dict[Element, dict[Element, ProsperityState]] = {}
+                for entry in prosperity_list:
+                    month_elem = Element(entry["month_element"])
+                    target_elem = Element(entry["target_element"])
+                    state = ProsperityState(entry["state"])
+                    if month_elem not in table:
+                        table[month_elem] = {}
+                    table[month_elem][target_elem] = state
+                if table:
+                    cls._PROSPERITY_TABLE = table
+        except Exception:
+            pass  # fall back to hardcoded
+        cls._DATA_LOADED = True
 
     @classmethod
     def generates(cls, source: Element, target: Element) -> bool:
@@ -155,6 +195,7 @@ class ElementEngine:
         Raises:
             ValueError: 如果地支无效
         """
+        cls._ensure_data_loaded()
         month_element = cls._BRANCH_ELEMENT.get(month_branch)
         if month_element is None:
             raise ValueError(f"无效的地支：{month_branch}")
@@ -177,3 +218,19 @@ class ElementEngine:
         if element is None:
             raise ValueError(f"无效的地支：{branch}")
         return element
+
+    @staticmethod
+    def is_month_break(yao_branch: str, month_branch: str) -> bool:
+        """判断是否月破
+
+        月破 = 月支冲爻支（六冲关系）。
+        子午冲、丑未冲、寅申冲、卯酉冲、辰戌冲、巳亥冲。
+
+        Args:
+            yao_branch: 爻的地支（如"子"、"丑"等）
+            month_branch: 月支（如"子"、"丑"等）
+
+        Returns:
+            True 表示月破
+        """
+        return CLASH_PAIRS.get(yao_branch) == month_branch

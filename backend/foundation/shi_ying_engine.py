@@ -23,6 +23,8 @@ class ShiYingEngine:
     应爻位置 = 世爻位置 + 3（超过6则减6）
     """
 
+    _DATA_LOADED: bool = False
+
     # 八宫卦序表
     # 格式：宫名 -> [本宫卦, 一世卦, 二世卦, 三世卦, 四世卦, 五世卦, 游魂卦, 归魂卦]
     PALACE_ORDER: dict[str, list[str]] = {
@@ -64,8 +66,36 @@ class ShiYingEngine:
     _HEXAGRAM_INDEX: dict[str, tuple[str, int]] = {}
 
     @classmethod
+    def _ensure_data_loaded(cls) -> None:
+        """从JSON数据文件加载八宫卦序（懒加载）
+
+        成功加载后覆盖硬编码的 PALACE_ORDER，失败时保留硬编码数据。
+        """
+        if cls._DATA_LOADED:
+            return
+        try:
+            from foundation.reference_data import get_palace_order
+
+            order_list = get_palace_order()
+            if order_list:
+                palace_order: dict[str, list[str]] = {}
+                for entry in order_list:
+                    palace = entry["palace"]
+                    pos = entry["position_in_palace"]
+                    name = entry["hexagram_name"]
+                    if palace not in palace_order:
+                        palace_order[palace] = [""] * 8
+                    palace_order[palace][pos] = name
+                if palace_order:
+                    cls.PALACE_ORDER = palace_order
+        except Exception:
+            pass  # fall back to hardcoded
+        cls._DATA_LOADED = True
+
+    @classmethod
     def _build_index(cls) -> None:
         """构建索引"""
+        cls._ensure_data_loaded()
         if cls._HEXAGRAM_INDEX:
             return
         for palace, hexagrams in cls.PALACE_ORDER.items():

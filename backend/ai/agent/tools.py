@@ -87,18 +87,21 @@ class AgentTools:
                 opposite = HexagramEngine.get_opposite(hexagram)
                 result["opposite"] = opposite.name
             except Exception:
+                logger.warning("get_opposite_failed", hexagram=hexagram_name, exc_info=True)
                 result["opposite"] = None
 
             try:
                 reversed_h = HexagramEngine.get_reversed(hexagram)
                 result["reversed"] = reversed_h.name
             except Exception:
+                logger.warning("get_reversed_failed", hexagram=hexagram_name, exc_info=True)
                 result["reversed"] = None
 
             try:
                 interlock = HexagramEngine.get_interlock(hexagram)
                 result["interlock"] = interlock.name
             except Exception:
+                logger.warning("get_interlock_failed", hexagram=hexagram_name, exc_info=True)
                 result["interlock"] = None
 
             return ToolResult(

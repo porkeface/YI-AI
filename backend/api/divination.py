@@ -254,9 +254,20 @@ def _enrich_hexagram(
     day_stem: str,
 ) -> Hexagram:
     """充实卦数据 — 委托给共享模块"""
-    from api.hexagram_enrich import enrich_hexagram
+    try:
+        from api.hexagram_enrich import enrich_hexagram
 
-    return enrich_hexagram(hexagram, moving_positions, day_stem)
+        result = enrich_hexagram(hexagram, moving_positions, day_stem)
+        # 验证enrich是否真的生效（检查干支是否被正确充实）
+        # 注意：不能用六亲!=兄弟来判断，因为第一爻为兄弟是完全正常的卦象
+        if result.lines and result.lines[0].gan_zhi != "甲子":
+            return result  # 干支已充实，enrich成功
+        else:
+            logger.warning("enrich_returned_defaults", hexagram_name=hexagram.name)
+            return result  # 仍然返回，但记录警告
+    except Exception as e:
+        logger.error("enrich_hexagram_failed", error=str(e), exc_info=True)
+        return hexagram  # 失败时返回原始卦，但已记录错误
 
 
 def _get_palace_name(hexagram: Hexagram) -> str:
@@ -488,6 +499,18 @@ async def create_divination(request: DivinationRequest):
     # ---- 4. 充实卦数据 ----
     enriched_hexagram = _enrich_hexagram(hexagram, moving_positions, day_stem)
 
+    # 检查enrich是否成功（干支是否被充实，而非默认值"甲子"）
+    enrich_success = (
+        enriched_hexagram.lines
+        and enriched_hexagram.lines[0].gan_zhi != "甲子"
+    )
+    if not enrich_success:
+        logger.warning(
+            "divination_enrich_partial",
+            hexagram_name=hexagram.name,
+            method=request.method,
+        )
+
     # ---- 5. 计算变卦 ----
     changed_hexagram: Hexagram | None = None
     if moving_positions:
@@ -561,6 +584,7 @@ async def create_divination(request: DivinationRequest):
         "changedHexagram": changed_response,
         "analysis": analysis_response,
         "aiInterpretation": ai_interpretation,
+        "enrichSuccess": enrich_success,
     }
 
     return ApiResponse(success=True, data=data)

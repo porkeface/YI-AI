@@ -10,6 +10,8 @@ from enum import Enum
 from math import ceil
 from typing import Any
 
+from lunardate import LunarDate
+
 from foundation.types import Verdict
 
 
@@ -30,7 +32,7 @@ class ZWStar(str, Enum):
     QISHA = "七杀"
     POJUN = "破军"
     LIANZHEN = "廉贞"
-    TIANGLONG = "天同"
+    TIANTONG = "天同"
 
 
 class ZWAuxStar(str, Enum):
@@ -226,15 +228,21 @@ class ZiWeiEngine:
         branches = "子丑寅卯辰巳午未申酉戌亥"
         hour_zhi_idx = ((hour + 1) // 2) % 12
 
-        # 年干支
-        year_stem_idx = (year - 4) % 10
-        year_branch_idx = (year - 4) % 12
-        year_stem = stems[year_stem_idx]
-        year_gan_zhi = f"{year_stem}{branches[year_branch_idx]}"
+        # 公历转农历（紫微斗数排盘使用农历）
+        lunar = LunarDate.fromSolarDate(year, month, day)
+        lunar_year = lunar.year
+        lunar_month = lunar.month
+        lunar_day = lunar.day
 
-        # 月干支
-        month_branch_idx = (month + 1) % 12
-        month_stem_idx = ((year_stem_idx % 5) * 2 + month - 1 + 2) % 10
+        # 年干支（使用农历年，处理公历1-2月跨年情况）
+        lunar_year_stem_idx = (lunar_year - 4) % 10
+        lunar_year_branch_idx = (lunar_year - 4) % 12
+        year_stem = stems[lunar_year_stem_idx]
+        year_gan_zhi = f"{year_stem}{branches[lunar_year_branch_idx]}"
+
+        # 月干支（使用农历月和农历年天干）
+        month_branch_idx = (lunar_month + 1) % 12
+        month_stem_idx = ((lunar_year_stem_idx % 5) * 2 + lunar_month - 1 + 2) % 10
         month_gan_zhi = f"{stems[month_stem_idx]}{branches[month_branch_idx]}"
 
         # 日干支
@@ -250,24 +258,24 @@ class ZiWeiEngine:
         hour_stem_idx = ((day_stem_idx % 5) * 2 + hour_zhi_idx) % 10
         hour_gan_zhi = f"{stems[hour_stem_idx]}{branches[hour_zhi_idx]}"
 
-        # 命宫、身宫
-        ming_idx = (2 + month - 1 - hour_zhi_idx) % 12
-        shen_idx = (2 + month - 1 + hour_zhi_idx) % 12
+        # 命宫、身宫（使用农历月）
+        ming_idx = (2 + lunar_month - 1 - hour_zhi_idx) % 12
+        shen_idx = (2 + lunar_month - 1 + hour_zhi_idx) % 12
 
         # 命宫天干→五行局
-        ming_stem_idx = cls._palace_stem(year_stem_idx, ming_idx)
+        ming_stem_idx = cls._palace_stem(lunar_year_stem_idx, ming_idx)
         ju = cls._NAYIN[(ming_stem_idx, ming_idx)]
 
-        # 安主星：紫微位置 = 从寅起数 ceil(日/局) 步
-        ziwei_pos = (ceil(day / ju) + 1) % 12
+        # 安主星：紫微位置 = 从寅起数 ceil(农历日/局) 步
+        ziwei_pos = (ceil(lunar_day / ju) + 1) % 12
         all_main: dict[int, list[str]] = {}
         for pos, stars in cls._ziwei_stars(ziwei_pos).items():
             all_main.setdefault(pos, []).extend(stars)
         for pos, stars in cls._tianfu_stars(ziwei_pos).items():
             all_main.setdefault(pos, []).extend(stars)
 
-        # 安辅星
-        aux_map = cls._aux_stars(year_stem_idx, year_branch_idx, month, hour_zhi_idx)
+        # 安辅星（左辅/右弼使用农历月）
+        aux_map = cls._aux_stars(lunar_year_stem_idx, lunar_year_branch_idx, lunar_month, hour_zhi_idx)
 
         # 四化映射（星名→四化名）
         hua_names = ("化禄", "化权", "化科", "化忌")
@@ -281,7 +289,7 @@ class ZiWeiEngine:
         palaces: list[ZWPalaceInfo] = []
         for i, pname in enumerate(cls._PALACE_NAMES):
             bi = (ming_idx + i) % 12
-            ps = cls._palace_stem(year_stem_idx, bi)
+            ps = cls._palace_stem(lunar_year_stem_idx, bi)
             ms_names = all_main.get(bi, [])
             ms = tuple(ZWStar(s) for s in ms_names)
             as_names = aux_map.get(bi, [])

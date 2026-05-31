@@ -10,8 +10,11 @@ MVP阶段使用静态数据 + 关键词匹配，后续可升级为向量数据�
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -273,6 +276,69 @@ _QUESTION_TOPIC_MAP: dict[str, tuple[str, ...]] = {
     "官司": ("纠纷", "诉讼", "决断", "公正"),
 }
 
+# 卦序号 -> 卦名（文王六十四卦序）
+_HEXAGRAM_ID_TO_NAME: dict[int, str] = {
+    1: "乾", 2: "坤", 3: "屯", 4: "蒙", 5: "需", 6: "讼", 7: "师", 8: "比",
+    9: "小畜", 10: "履", 11: "泰", 12: "否", 13: "同人", 14: "大有", 15: "谦", 16: "豫",
+    17: "随", 18: "蛊", 19: "临", 20: "观", 21: "噬嗑", 22: "贲", 23: "剥", 24: "复",
+    25: "无妄", 26: "大畜", 27: "颐", 28: "大过", 29: "坎", 30: "离", 31: "咸", 32: "恒",
+    33: "遁", 34: "大壮", 35: "晋", 36: "明夷", 37: "家人", 38: "睽", 39: "蹇", 40: "解",
+    41: "损", 42: "益", 43: "夬", 44: "姤", 45: "萃", 46: "升", 47: "困", 48: "井",
+    49: "革", 50: "鼎", 51: "震", 52: "艮", 53: "渐", 54: "归妹", 55: "丰", 56: "旅",
+    57: "巽", 58: "兑", 59: "涣", 60: "节", 61: "中孚", 62: "小过", 63: "既济", 64: "未济",
+}
+
+# 卦名 -> 卦序号（反向映射，运行时构建）
+_NAME_TO_HEXAGRAM_ID: dict[str, int] = {v: k for k, v in _HEXAGRAM_ID_TO_NAME.items()}
+
+
+def _load_line_texts_from_json() -> dict[str, dict[int, dict[str, str]]]:
+    """从 line_texts.json 加载全部384爻辞数据到内存缓存
+
+    JSON 使用的键名:
+        - hexagram_id: 卦序号 (int, 1-64)
+        - position: 爻位置 (int, 1-6)
+        - yao_name: 爻名 (str, 如"初九")
+        - text: 爻辞 (str)
+        - image_text: 小象辞 (str)
+
+    Returns:
+        {卦名: {爻位置: {"text": 爻辞, "image_text": 小象辞}}}
+    """
+    json_path = Path(__file__).resolve().parent.parent / "foundation" / "data" / "line_texts.json"
+    if not json_path.exists():
+        logger.warning("line_texts.json 不存在: %s", json_path)
+        return {}
+
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logger.error("加载 line_texts.json 失败: %s", e)
+        return {}
+
+    result: dict[str, dict[int, dict[str, str]]] = {}
+    for d in data:
+        hex_id = d.get("hexagram_id", 0)
+        position = d.get("position", 0)
+        hex_name = _HEXAGRAM_ID_TO_NAME.get(hex_id, "")
+
+        if hex_name and 1 <= position <= 6:
+            if hex_name not in result:
+                result[hex_name] = {}
+            result[hex_name][position] = {
+                "text": d.get("text", ""),
+                "image_text": d.get("image_text", ""),
+            }
+
+    total = sum(len(v) for v in result.values())
+    logger.info("从 line_texts.json 加载了 %d 卦共 %d 条爻辞", len(result), total)
+    return result
+
+
+# 模块级缓存：加载全部384爻辞
+_LINE_TEXTS: dict[str, dict[int, dict[str, str]]] = _load_line_texts_from_json()
+
 
 class KnowledgeBase:
     """易经知识库
@@ -314,7 +380,7 @@ class KnowledgeBase:
             try:
                 return self._vector_retrieve(hexagram_name, question_type, max_entries)
             except Exception as e:
-                logger.warning(f"Vector search failed, falling back to keyword: {e}")
+                logger.warning("Vector search failed, falling back to keyword: %s", e)
 
         # 降级到关键词匹配
         return self._keyword_retrieve(hexagram_name, question_type, max_entries)
@@ -384,6 +450,31 @@ class KnowledgeBase:
         for entry in entries:
             parts.append(f"{entry.category}：{entry.content}")
         return "\n".join(parts)
+
+    def get_line_text(
+        self,
+        hexagram_name: str,
+        line_position: int,
+    ) -> dict[str, str] | None:
+        """获取指定卦、指定爻位的爻辞数据
+
+        优先从内存缓存 _LINE_TEXTS 读取（已预加载全部384爻）。
+        如果缓存为空（JSON 文件缺失），返回 None。
+
+        Args:
+            hexagram_name: 卦名（如 "乾"、"坤"、"小畜"）
+            line_position: 爻位置 (1-6)
+
+        Returns:
+            {"text": "初九：潜龙勿用。", "image_text": "潜龙勿用，阳在下也。"}
+            未找到时返回 None
+        """
+        if not (1 <= line_position <= 6):
+            return None
+        hex_lines = _LINE_TEXTS.get(hexagram_name)
+        if hex_lines is None:
+            return None
+        return hex_lines.get(line_position)
 
     @property
     def total_entries(self) -> int:

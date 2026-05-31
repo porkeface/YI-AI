@@ -40,6 +40,31 @@ _PROSPERITY_DESC: dict[ProsperityState, tuple[str, str]] = {
         "死绝，力量最弱", "死态，宜守不宜进"),
 }
 
+# 旺衰定性判断：基于五行旺衰的古典定性描述
+_PROSPERITY_STRENGTH: dict[ProsperityState, str] = {
+    ProsperityState.WANG: "力量充沛，利于行动",
+    ProsperityState.XIANG: "力量较强，前景看好",
+    ProsperityState.XIU: "力量不足，宜守不宜攻",
+    ProsperityState.QIU: "力量受制，需谨慎行事",
+    ProsperityState.SI: "力量极弱，大忌妄动",
+}
+
+# 上下卦互为颠倒的卦对（综卦关系）
+# 如屯(水雷)与蒙(山水)互为综卦
+_REVERSED_TRIGRAM: dict[str, str] = {
+    "乾": "乾", "兑": "巽", "离": "离", "震": "艮",
+    "巽": "兑", "坎": "坎", "艮": "震", "坤": "坤",
+}
+
+# 游魂卦ID（京房易传分类）
+_WANDERING_SOUL_IDS: frozenset[int] = frozenset({
+    34, 36, 42, 48, 52, 54, 58, 62,
+})
+# 归魂卦ID（京房易传分类）
+_RETURNING_SOUL_IDS: frozenset[int] = frozenset({
+    33, 35, 41, 47, 51, 53, 57, 61,
+})
+
 
 class DeepReasoningEngine:
     """深度推演引擎，基于五行生克执行10步推理链。"""
@@ -68,7 +93,7 @@ class DeepReasoningEngine:
             if step.step_type == StepType.BRANCH:
                 branch_points.append(step.step_number)
 
-        dist = cls._build_probability_distribution(tuple(steps))
+        trend = cls._build_trend_analysis(tuple(steps))
         final_hex = cls._determine_final_hexagram(steps)
         confidence = cls._compute_overall_confidence(tuple(steps))
         conclusion = cls._build_conclusion(tuple(steps), question_type)
@@ -77,7 +102,7 @@ class DeepReasoningEngine:
             steps=tuple(steps), initial_hexagram=hexagram_name,
             final_hexagram=final_hex, branch_points=tuple(branch_points),
             overall_confidence=confidence, conclusion=conclusion,
-            probability_distribution=dist,
+            trend_analysis=trend,
         )
 
     # -- 步骤构建器 -------------------------------------------------------
@@ -131,8 +156,8 @@ class DeepReasoningEngine:
         cls, hex: Hexagram, prev: ReasoningStep | None,
         _mb: str, _chain: list[ReasoningStep],
     ) -> ReasoningStep:
-        u_n, l_n = hex.upper_trigram.nature, hex.lower_trigram.nature
-        pat = cls._identify_pattern(u_n, l_n)
+        """Step 3: 比对 — 基于古典易学理论的卦象模式分析。"""
+        pat = cls._analyze_hexagram_pattern(hex)
         return ReasoningStep(
             step_number=3, step_type=StepType.COMPARE,
             input_state=f"前步:{prev.output_state if prev else '无'}",
@@ -242,22 +267,48 @@ class DeepReasoningEngine:
     @classmethod
     def _s8_branch(
         cls, hex: Hexagram, prev: ReasoningStep | None,
-        _mb: str, _chain: list[ReasoningStep],
+        month_branch: str, _chain: list[ReasoningStep],
     ) -> ReasoningStep:
+        """Step 8: 分支投影 — 基于五行生克旺衰的定性趋势判断。"""
         h_e = hex.element
         gen = _GENERATES.get(h_e, h_e)
         over = _OVERCOMES.get(h_e, h_e)
+
+        # 判断卦五行在月令的旺衰
+        try:
+            pros = ElementEngine.judge_prosperity(h_e, month_branch)
+        except ValueError:
+            pros = ProsperityState.XIU
+        strength_desc = _PROSPERITY_STRENGTH.get(pros, "状态不明")
+
+        # 基于旺衰和五行生克给出定性趋势
+        if pros in (ProsperityState.WANG, ProsperityState.XIANG):
+            trend = "利于进取"
+            conf = ConfidenceLevel.HIGH
+            detail = (f"卦五行{h_e.value}在{month_branch}月{pros.value}，"
+                      f"{strength_desc}。生扶方向{gen.value}有力，"
+                      f"克制方向{over.value}不足为虑。")
+        elif pros == ProsperityState.XIU:
+            trend = "宜守待时"
+            conf = ConfidenceLevel.MEDIUM
+            detail = (f"卦五行{h_e.value}在{month_branch}月{pros.value}，"
+                      f"{strength_desc}。生扶{gen.value}乏力，"
+                      f"克制{over.value}有压。")
+        else:
+            trend = "宜静忌动"
+            conf = ConfidenceLevel.LOW
+            detail = (f"卦五行{h_e.value}在{month_branch}月{pros.value}，"
+                      f"{strength_desc}。事多阻碍，不宜冒进。")
+
         return ReasoningStep(
             step_number=8, step_type=StepType.BRANCH,
             input_state=f"前步:{prev.output_state if prev else '无'}",
-            logic=(
-                f"从{h_e.value}出发: 生{gen.value}(60%)、"
-                f"克{over.value}(25%)、比和{h_e.value}(15%)。"),
-            output_state=f"三分支: 生{gen.value}|克{over.value}|比和{h_e.value}",
-            confidence=ConfidenceLevel.MEDIUM,
+            logic=detail,
+            output_state=f"趋势:{trend}。{h_e.value}{pros.value}，{strength_desc}。",
+            confidence=conf,
             element_changes=(
-                f"生扶->{gen.value}", f"克制->{over.value}",
-                f"比和->{h_e.value}"),
+                f"生扶方向->{gen.value}", f"克制方向->{over.value}",
+                f"比和方向->{h_e.value}"),
             related_hexagrams=(hex.name,),
         )
 
@@ -309,58 +360,97 @@ class DeepReasoningEngine:
     # -- 辅助方法 ---------------------------------------------------------
 
     @classmethod
-    def _identify_pattern(cls, upper: str, lower: str) -> dict[str, object]:
-        dyn, stab = {"天", "雷", "风", "火", "水"}, {"山", "地", "泽"}
-        if upper in dyn and lower in stab:
-            return {"type": "动上静下", "confidence": ConfidenceLevel.MEDIUM,
-                    "description": f"外在活跃内在稳固，如{upper}在{lower}上。",
-                    "inference": "表象活跃根基稳固，宜主动但需守本。"}
-        if upper in stab and lower in dyn:
-            return {"type": "静上动下", "confidence": ConfidenceLevel.MEDIUM,
-                    "description": f"外在沉稳内在活跃，如{upper}下有{lower}。",
-                    "inference": "表面平静内在动力足，宜稳中求进。"}
-        return {"type": "流动组合", "confidence": ConfidenceLevel.LOW,
-                "description": f"{upper}与{lower}的组合。",
-                "inference": "事物变化较快，宜灵活应对。"}
+    def _is_reversed_trigram_pair(cls, hex: Hexagram) -> bool:
+        """判断上下卦是否互为综卦关系（颠倒关系）。
+
+        如屯(水雷)与蒙(山水)互为综卦，泰(地天)与否(天地)互为综卦。
+        """
+        upper_nature = hex.upper_trigram.nature
+        lower_nature = hex.lower_trigram.nature
+        return _REVERSED_TRIGRAM.get(upper_nature) == lower_nature
 
     @classmethod
-    def _compute_confidence(cls, score: float) -> ConfidenceLevel:
-        if score >= 75:
-            return ConfidenceLevel.HIGH
-        if score >= 50:
-            return ConfidenceLevel.MEDIUM
-        if score >= 25:
-            return ConfidenceLevel.LOW
-        return ConfidenceLevel.SPECULATIVE
+    def _analyze_hexagram_pattern(cls, hex: Hexagram) -> dict[str, object]:
+        """基于古典易学理论分析卦象模式。
+
+        检查：上下卦是否互为综卦、是否游魂/归魂卦。
+        参考京房易传和《增删卜易》的分类体系。
+        """
+        patterns: list[str] = []
+        inferences: list[str] = []
+        conf = ConfidenceLevel.MEDIUM
+
+        # 检查上下卦综卦关系
+        if cls._is_reversed_trigram_pair(hex):
+            patterns.append("上下互综")
+            inferences.append(
+                "上下卦互为颠倒，事物表里不一，需透过现象看本质。")
+
+        # 检查游魂卦（八宫中第七卦，世在四爻）
+        if hex.id in _WANDERING_SOUL_IDS:
+            patterns.append("游魂卦")
+            inferences.append(
+                "游魂主心神不定、事物迁移，宜安定心神再行动。")
+            conf = ConfidenceLevel.LOW
+
+        # 检查归魂卦（八宫中第八卦，世在三爻）
+        if hex.id in _RETURNING_SOUL_IDS:
+            patterns.append("归魂卦")
+            inferences.append(
+                "归魂主回归安定，事物将有定论，宜顺势而为。")
+            conf = ConfidenceLevel.HIGH
+
+        if not patterns:
+            return {"type": "常规卦象", "confidence": ConfidenceLevel.MEDIUM,
+                    "description": f"{hex.name}，上下卦{hex.upper_trigram.nature}在{hex.lower_trigram.nature}上。",
+                    "inference": "卦象无特殊格局，按常规五行生克论断。"}
+
+        return {
+            "type": "、".join(patterns),
+            "confidence": conf,
+            "description": f"{hex.name}，{'、'.join(patterns)}格局。",
+            "inference": " ".join(inferences),
+        }
 
     @classmethod
-    def _build_probability_distribution(
+    def _build_trend_analysis(
         cls, chain: tuple[ReasoningStep, ...],
-    ) -> tuple[tuple[str, float], ...]:
-        wm = {ConfidenceLevel.HIGH: 1.5, ConfidenceLevel.MEDIUM: 1.0,
-              ConfidenceLevel.LOW: 0.6, ConfidenceLevel.SPECULATIVE: 0.3}
-        pos_kw, neg_kw = ("偏吉", "上升", "旺", "助力"), ("偏凶", "下降", "衰", "阻力", "囚", "死")
-        pos = sum(wm.get(s.confidence, 1.0) for s in chain if any(k in s.output_state + s.logic for k in pos_kw))
-        neg = sum(wm.get(s.confidence, 1.0) for s in chain if any(k in s.output_state + s.logic for k in neg_kw))
-        total = pos + neg
-        if total == 0:
-            return (("吉", 0.33), ("凶", 0.33), ("平", 0.34))
-        ji, xiong = pos / total, neg / total
-        ping = max(0.0, 1.0 - ji - xiong)
-        if ping == 0 and (ji + xiong) > 0:
-            ji /= (ji + xiong)
-            xiong = 1.0 - ji
-        return (("吉", round(ji, 3)), ("凶", round(xiong, 3)), ("平", round(ping, 3)))
+    ) -> tuple[tuple[str, str], ...]:
+        """构建定性趋势分析，替代虚假的数值概率。
+
+        基于古典五行旺衰理论，统计推理链中的定性信号，
+        输出吉/凶/平的定性判断及依据。
+        """
+        pos_kw = ("偏吉", "上升", "旺", "相", "助力", "利于进取")
+        neg_kw = ("偏凶", "下降", "衰", "囚", "死", "阻力", "宜静忌动")
+        pos = [s for s in chain if any(k in s.output_state + s.logic for k in pos_kw)]
+        neg = [s for s in chain if any(k in s.output_state + s.logic for k in neg_kw)]
+
+        if len(pos) > len(neg):
+            ji_desc = f"正向信号{len(pos)}个，多于负向{len(neg)}个"
+            result = (("吉", ji_desc),)
+        elif len(neg) > len(pos):
+            xiong_desc = f"负向信号{len(neg)}个，多于正向{len(pos)}个"
+            result = (("凶", xiong_desc),)
+        else:
+            result = (("平", f"正负信号持平（{len(pos)}:{len(neg)}）"),)
+
+        return result
 
     @classmethod
     def _compute_overall_confidence(
         cls, chain: tuple[ReasoningStep, ...],
     ) -> ConfidenceLevel:
+        """基于推理链中各步骤置信度的定性综合判断。"""
         if not chain:
             return ConfidenceLevel.SPECULATIVE
-        sm = {ConfidenceLevel.HIGH: 90, ConfidenceLevel.MEDIUM: 60,
-              ConfidenceLevel.LOW: 35, ConfidenceLevel.SPECULATIVE: 15}
-        return cls._compute_confidence(sum(sm.get(s.confidence, 50) for s in chain) / len(chain))
+        high_count = sum(1 for s in chain if s.confidence == ConfidenceLevel.HIGH)
+        low_count = sum(1 for s in chain if s.confidence in (ConfidenceLevel.LOW, ConfidenceLevel.SPECULATIVE))
+        if high_count > len(chain) * 0.6:
+            return ConfidenceLevel.HIGH
+        if low_count > len(chain) * 0.5:
+            return ConfidenceLevel.LOW
+        return ConfidenceLevel.MEDIUM
 
     @classmethod
     def _extract_direction(

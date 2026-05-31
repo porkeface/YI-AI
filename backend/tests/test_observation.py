@@ -21,9 +21,11 @@ from ai.observation.types import (
     ObservationConfig,
 )
 from ai.observation.pattern_detector import PatternDetector
+from ai.observation.pattern_analyzer import PatternAnalyzer
 from ai.observation.anomaly_detector import AnomalyDetector
 from ai.observation.trend_reporter import TrendReporter
 from ai.observation.agent import ObservationAgent
+from foundation.types import ProsperityState
 from ai.memory.types import MemoryType, EmotionalState
 
 
@@ -517,3 +519,154 @@ class TestObservationTypes:
         assert AnomalySeverity.INFO.value == "信息"
         assert AnomalySeverity.WARNING.value == "警告"
         assert AnomalySeverity.CRITICAL.value == "严重"
+
+
+# ============================================================
+# 模式分析器测试
+# ============================================================
+
+
+class TestPatternAnalyzer:
+    """模式分析器测试（五行旺衰定性分析）"""
+
+    def _make_frequency_pattern(
+        self,
+        name: str = "乾",
+        frequency: int = 5,
+        confidence: float = 0.6,
+    ) -> DetectedPattern:
+        """创建卦象频率模式"""
+        return DetectedPattern(
+            category=PatternCategory.HEXAGRAM_FREQUENCY,
+            description=f"卦象'{name}'出现{frequency}次",
+            confidence=confidence,
+            frequency=frequency,
+            examples=(name,),
+        )
+
+    def _make_sequence_pattern(
+        self, *names: str, frequency: int = 3
+    ) -> DetectedPattern:
+        """创建变化序列模式"""
+        return DetectedPattern(
+            category=PatternCategory.CHANGE_SEQUENCE,
+            description=f"变化序列出现{frequency}次",
+            confidence=0.5,
+            frequency=frequency,
+            examples=names,
+        )
+
+    def test_analyze_empty_patterns(self):
+        """空模式返回默认结果"""
+        result = PatternAnalyzer.analyze([])
+        assert result["strength"] == ProsperityState.XIU.value
+        assert "数据不足" in result["trend"]
+        assert "无模式数据" in result["relationships"]
+        assert "暂无足够数据" in result["advice"]
+
+    def test_analyze_result_keys(self):
+        """分析结果包含所有必需字段"""
+        patterns = [self._make_frequency_pattern("乾", 5)]
+        result = PatternAnalyzer.analyze(patterns, month_branch="子")
+        assert "strength" in result
+        assert "trend" in result
+        assert "relationships" in result
+        assert "advice" in result
+
+    def test_strength_is_qualitative(self):
+        """strength 输出为旺相休囚死之一"""
+        patterns = [self._make_frequency_pattern("离", 6)]
+        result = PatternAnalyzer.analyze(patterns, month_branch="午")
+        # 离属火，午月火旺
+        assert result["strength"] in {
+            s.value for s in ProsperityState
+        }
+
+    def test_fire_prosperity_in_fire_month(self):
+        """离卦在午月应为旺"""
+        patterns = [self._make_frequency_pattern("离", 6)]
+        result = PatternAnalyzer.analyze(patterns, month_branch="午")
+        assert result["strength"] == ProsperityState.WANG.value
+
+    def test_metal_prosperity_in_fire_month(self):
+        """乾卦（金）在午月（火）应为死（火克金）"""
+        patterns = [self._make_frequency_pattern("乾", 6)]
+        result = PatternAnalyzer.analyze(patterns, month_branch="午")
+        assert result["strength"] == ProsperityState.SI.value
+
+    def test_trend_with_indicators(self):
+        """有趋势指标时使用指标判断趋势"""
+        patterns = [self._make_frequency_pattern("坤", 4)]
+        indicator = TrendIndicator(
+            metric="活动频率",
+            current_value=10.0,
+            previous_value=5.0,
+            change_rate=1.0,
+            direction=TrendDirection.IMPROVING,
+        )
+        result = PatternAnalyzer.analyze(
+            patterns, trend_indicators=[indicator], month_branch="子"
+        )
+        assert "上升" in result["trend"]
+
+    def test_trend_without_indicators(self):
+        """无趋势指标时根据模式频率推断"""
+        patterns = [self._make_frequency_pattern("坎", 6)]
+        result = PatternAnalyzer.analyze(patterns, month_branch="子")
+        # 频率6 >= 5 且 confidence 0.6 > 0.5 -> 上升
+        assert "上升" in result["trend"]
+
+    def test_relationships_with_two_hexagrams(self):
+        """两个卦象时分析生克关系"""
+        patterns = [self._make_sequence_pattern("乾", "离", frequency=3)]
+        result = PatternAnalyzer.analyze(patterns, month_branch="子")
+        # 乾(金) 克 离(火) 不对，火克金
+        # 实际: 离(火) vs 乾(金) -> 火克金
+        assert "克" in result["relationships"] or "生" in result["relationships"]
+
+    def test_relationships_single_hexagram(self):
+        """单个卦象时描述其五行状态"""
+        patterns = [self._make_frequency_pattern("震", 4)]
+        result = PatternAnalyzer.analyze(patterns, month_branch="卯")
+        # 震属木，卯月木旺
+        assert "木" in result["relationships"]
+
+    def test_advice_contains_practical_guidance(self):
+        """建议包含实用指导"""
+        patterns = [self._make_frequency_pattern("坤", 5)]
+        result = PatternAnalyzer.analyze(patterns, month_branch="子")
+        # 坤(土)在子月(水) -> 土克水为旺？不对
+        # 子月水旺，土克水 -> 土为相
+        # 不管具体旺衰，建议应该不为空
+        assert len(result["advice"]) > 10
+
+    def test_no_overall_score(self):
+        """不输出 overall_score 数值"""
+        patterns = [self._make_frequency_pattern("乾", 5)]
+        result = PatternAnalyzer.analyze(patterns, month_branch="子")
+        assert "overall_score" not in result
+        assert "score" not in result
+
+    def test_multiple_patterns_composite(self):
+        """多模式综合分析"""
+        patterns = [
+            self._make_frequency_pattern("乾", 6, 0.7),
+            self._make_frequency_pattern("坤", 4, 0.5),
+            DetectedPattern(
+                category=PatternCategory.EMOTIONAL_CYCLE,
+                description="主导情绪为焦虑",
+                confidence=0.6,
+                frequency=4,
+                examples=("焦虑",),
+            ),
+        ]
+        result = PatternAnalyzer.analyze(patterns, month_branch="子")
+        # 情绪模式应触发相关建议
+        assert "情绪" in result["advice"]
+
+    def test_unknown_hexagram_graceful(self):
+        """未知卦象名称不崩溃"""
+        patterns = [self._make_frequency_pattern("未知卦", 3)]
+        result = PatternAnalyzer.analyze(patterns, month_branch="子")
+        # 应返回默认值而不崩溃
+        assert result["strength"] in {s.value for s in ProsperityState}

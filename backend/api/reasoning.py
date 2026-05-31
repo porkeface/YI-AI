@@ -53,7 +53,7 @@ async def deep_reason(request: DeepReasoningRequest):
         "branchPoints": list(chain.branch_points),
         "overallConfidence": chain.overall_confidence.value,
         "conclusion": chain.conclusion,
-        "probabilityDistribution": dict(chain.probability_distribution),
+        "trendAnalysis": dict(chain.trend_analysis),
     }
 
     return ApiResponse(success=True, data=data)

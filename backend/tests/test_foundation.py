@@ -607,24 +607,33 @@ class TestGanZhiAccuracy(unittest.TestCase):
     """干支转换准确性测试"""
 
     def test_time_to_gan_zhi_known_date(self) -> None:
-        """测试2024年1月1日12时的干支"""
-        result = GanZhiEngine.time_to_gan_zhi(2024, 1, 1, 12)
+        """测试2024年2月5日12时的干支（立春后）"""
+        result = GanZhiEngine.time_to_gan_zhi(2024, 2, 5, 12)
         self.assertIn("year", result)
         self.assertIn("month", result)
         self.assertIn("day", result)
         self.assertIn("hour", result)
-        # 2024年是甲辰年
+        # 2024年立春后是甲辰年
         self.assertEqual(result["year"], "甲辰")
 
     def test_time_to_gan_zhi_2025(self) -> None:
-        """2025年应为乙巳年"""
-        result = GanZhiEngine.time_to_gan_zhi(2025, 1, 1, 12)
+        """2025年立春后应为乙巳年"""
+        result = GanZhiEngine.time_to_gan_zhi(2025, 2, 5, 12)
         self.assertEqual(result["year"], "乙巳")
 
     def test_time_to_gan_zhi_2023(self) -> None:
-        """2023年应为癸卯年"""
-        result = GanZhiEngine.time_to_gan_zhi(2023, 1, 1, 12)
+        """2023年立春后应为癸卯年"""
+        result = GanZhiEngine.time_to_gan_zhi(2023, 2, 5, 12)
         self.assertEqual(result["year"], "癸卯")
+
+    def test_time_to_gan_zhi_lichun_boundary(self) -> None:
+        """测试立春边界：1月应属于上一年的年干支"""
+        # 2024年1月1日（立春前）应为癸卯年
+        result_before = GanZhiEngine.time_to_gan_zhi(2024, 1, 1, 12)
+        self.assertEqual(result_before["year"], "癸卯")
+        # 2024年2月5日（立春后）应为甲辰年
+        result_after = GanZhiEngine.time_to_gan_zhi(2024, 2, 5, 12)
+        self.assertEqual(result_after["year"], "甲辰")
 
     def test_najia_rules_loaded(self) -> None:
         """验证纳甲规则已加载（8个卦，每卦6爻）"""

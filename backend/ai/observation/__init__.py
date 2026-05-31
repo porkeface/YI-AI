@@ -11,6 +11,7 @@
 
 from ai.observation.agent import ObservationAgent
 from ai.observation.pattern_detector import PatternDetector
+from ai.observation.pattern_analyzer import PatternAnalyzer
 from ai.observation.anomaly_detector import AnomalyDetector
 from ai.observation.trend_reporter import TrendReporter
 from ai.observation.types import (
@@ -31,6 +32,7 @@ __all__ = [
     # 核心
     "ObservationAgent",
     "PatternDetector",
+    "PatternAnalyzer",
     "AnomalyDetector",
     "TrendReporter",
     # 类型

@@ -52,7 +52,7 @@ class ReasoningChain:
     branch_points: tuple[int, ...]
     overall_confidence: ConfidenceLevel
     conclusion: str
-    probability_distribution: tuple[tuple[str, float], ...]
+    trend_analysis: tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True)

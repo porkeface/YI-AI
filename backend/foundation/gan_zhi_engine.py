@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import sxtwl
+
 from foundation.types import TrigramName
 
 
@@ -101,8 +103,9 @@ class GanZhiEngine:
                     najia[trigram][position - 1] = gz
                 if najia:
                     cls.NAJIA_RULES = najia
-        except Exception:
-            pass  # fall back to hardcoded
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("纳甲JSON加载失败，使用硬编码数据: %s", e)
         cls._DATA_LOADED = True
 
     @classmethod
@@ -200,6 +203,21 @@ class GanZhiEngine:
             "泽": TrigramName.DUI,
         }
 
+        # 单字卦名（八纯卦）：乾、坤、震、巽、坎、离、艮、兑
+        single_to_trigram = {
+            "乾": TrigramName.QIAN,
+            "坤": TrigramName.KUN,
+            "震": TrigramName.ZHEN,
+            "巽": TrigramName.XUN,
+            "坎": TrigramName.KAN,
+            "离": TrigramName.LI,
+            "艮": TrigramName.GEN,
+            "兑": TrigramName.DUI,
+        }
+        if len(name) == 1 and name in single_to_trigram:
+            t = single_to_trigram[name]
+            return (t, t)
+
         if len(name) >= 3:
             upper_nature = name[0]
             lower_nature = name[1]
@@ -210,11 +228,25 @@ class GanZhiEngine:
 
         raise ValueError(f"无法解析卦名：{name}")
 
+    @staticmethod
+    def _hour_to_branch_idx(hour: int) -> int:
+        """将24小时制转换为地支索引（子时=0开始）
+
+        Args:
+            hour: 0-23小时
+
+        Returns:
+            地支索引 0-11
+        """
+        return ((hour + 1) // 2) % 12
+
     @classmethod
     def time_to_gan_zhi(
         cls, year: int, month: int, day: int, hour: int
     ) -> dict[str, str]:
-        """时间转干支
+        """时间转干支（使用sxtwl天文历算库）
+
+        自动处理立春换年、节气换月等边界。
 
         Args:
             year: 年份（公历）
@@ -225,55 +257,21 @@ class GanZhiEngine:
         Returns:
             包含年干支、月干支、日干支、时干支的字典
         """
-        cls._build_jiazi_table()
+        day_info = sxtwl.fromSolar(year, month, day)
 
-        # 年干支（以立春为界，简化处理）
-        year_stem_idx = (year - 4) % 10
-        year_branch_idx = (year - 4) % 12
-        year_gz = f"{cls.STEMS[year_stem_idx]}{cls.BRANCHES[year_branch_idx]}"
+        year_gz = day_info.getYearGZ()
+        month_gz = day_info.getMonthGZ()
+        day_gz = day_info.getDayGZ()
 
-        # 月干支（简化处理，实际需要考虑节气）
-        # 月支：寅月(1月)开始
-        month_branch_idx = (month + 1) % 12
-        # 月干根据年干推算
-        month_stem_base = (year_stem_idx % 5) * 2
-        month_stem_idx = (month_stem_base + month - 1 + 2) % 10
-        month_gz = f"{cls.STEMS[month_stem_idx]}{cls.BRANCHES[month_branch_idx]}"
-
-        # 日干支（简化处理，实际需要查万年历）
-        # 使用蔡勒公式的变体
-        if month <= 2:
-            year_adj = year - 1
-            month_adj = month + 12
-        else:
-            year_adj = year
-            month_adj = month
-        day_julian = (
-            day
-            + 153 * (month_adj - 3) // 5
-            + 365 * year_adj
-            + year_adj // 4
-            - year_adj // 100
-            + year_adj // 400
-            - 32045
-        )
-        day_stem_idx = (day_julian + 9) % 10
-        day_branch_idx = (day_julian + 1) % 12
-        day_gz = f"{cls.STEMS[day_stem_idx]}{cls.BRANCHES[day_branch_idx]}"
-
-        # 时干支
-        # 时支：子时(23-1)开始
-        hour_branch_idx = ((hour + 1) // 2) % 12
-        # 时干根据日干推算
-        hour_stem_base = (day_stem_idx % 5) * 2
-        hour_stem_idx = (hour_stem_base + hour_branch_idx) % 10
-        hour_gz = f"{cls.STEMS[hour_stem_idx]}{cls.BRANCHES[hour_branch_idx]}"
+        # 时干支：根据日干推算时干（五鼠遁元法）
+        hour_branch_idx = cls._hour_to_branch_idx(hour)
+        hour_stem_idx = (day_gz.tg * 2 + hour_branch_idx) % 10
 
         return {
-            "year": year_gz,
-            "month": month_gz,
-            "day": day_gz,
-            "hour": hour_gz,
+            "year": f"{cls.STEMS[year_gz.tg]}{cls.BRANCHES[year_gz.dz]}",
+            "month": f"{cls.STEMS[month_gz.tg]}{cls.BRANCHES[month_gz.dz]}",
+            "day": f"{cls.STEMS[day_gz.tg]}{cls.BRANCHES[day_gz.dz]}",
+            "hour": f"{cls.STEMS[hour_stem_idx]}{cls.BRANCHES[hour_branch_idx]}",
         }
 
     @classmethod

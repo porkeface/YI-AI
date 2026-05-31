@@ -46,13 +46,16 @@ class TestDeepReasoningEngine:
         assert StepType.CONCLUDE in step_types
         assert StepType.BRANCH in step_types
 
-    def test_reason_probability_distribution(self):
-        """概率分布应归一化"""
+    def test_reason_trend_analysis(self):
+        """趋势分析应为定性判断"""
         chain = DeepReasoningEngine.reason("水雷屯", "通用")
-        dist = dict(chain.probability_distribution)
-        total = sum(dist.values())
-        assert abs(total - 1.0) < 0.01
-        assert all(0 <= v <= 1 for v in dist.values())
+        trend = chain.trend_analysis
+        assert isinstance(trend, tuple)
+        assert len(trend) > 0
+        for label, desc in trend:
+            assert label in ("吉", "凶", "平")
+            assert isinstance(desc, str)
+            assert len(desc) > 0
 
     def test_reason_with_month_branch(self):
         """不同月令应产生不同推演结果"""
@@ -63,11 +66,11 @@ class TestDeepReasoningEngine:
         summer_logic = [s.logic for s in chain_summer.steps]
         assert winter_logic != summer_logic
 
-    def test_reason_probability_is_tuple(self):
-        """概率分布应为不可变元组"""
+    def test_reason_trend_is_tuple(self):
+        """趋势分析应为不可变元组"""
         chain = DeepReasoningEngine.reason("乾为天", "事业")
-        assert isinstance(chain.probability_distribution, tuple)
-        for item in chain.probability_distribution:
+        assert isinstance(chain.trend_analysis, tuple)
+        for item in chain.trend_analysis:
             assert isinstance(item, tuple)
             assert len(item) == 2
 

@@ -301,12 +301,135 @@ def _classify_intent(state: AgentState) -> dict:
     }
 
 
+# 短卦名 -> 全名映射（意图分类器提取短名，HexagramEngine需要全名）
+_SHORT_TO_FULL_NAME: dict[str, str] = {
+    "乾": "乾为天", "坤": "坤为地", "屯": "水雷屯", "蒙": "山水蒙",
+    "需": "水天需", "讼": "天水讼", "师": "地水师", "比": "水地比",
+    "小畜": "风天小畜", "履": "天泽履", "泰": "地天泰", "否": "天地否",
+    "同人": "天火同人", "大有": "火天大有", "谦": "地山谦", "豫": "雷地豫",
+    "随": "泽雷随", "蛊": "山风蛊", "临": "地泽临", "观": "风地观",
+    "噬嗑": "火雷噬嗑", "贲": "山火贲", "剥": "山地剥", "复": "地雷复",
+    "无妄": "天雷无妄", "大畜": "山天大畜", "颐": "山雷颐", "大过": "泽风大过",
+    "坎": "坎为水", "离": "离为火", "咸": "泽山咸", "恒": "雷风恒",
+    "遁": "天山遁", "大壮": "雷天大壮", "晋": "火地晋", "明夷": "地火明夷",
+    "家人": "风火家人", "睽": "火泽睽", "蹇": "水山蹇", "解": "雷水解",
+    "损": "山泽损", "益": "风雷益", "夬": "泽天夬", "姤": "天风姤",
+    "萃": "泽地萃", "升": "地风升", "困": "泽水困", "井": "水风井",
+    "革": "泽火革", "鼎": "火风鼎", "震": "震为雷", "艮": "艮为山",
+    "渐": "风山渐", "归妹": "雷泽归妹", "丰": "雷火丰", "旅": "火山旅",
+    "巽": "巽为风", "兑": "兑为泽", "涣": "风水涣", "节": "水泽节",
+    "中孚": "风泽中孚", "小过": "雷山小过", "既济": "水火既济", "未济": "火水未济",
+}
+
+
+def _resolve_hexagram_name(name: str) -> str | None:
+    """将短卦名解析为全名
+
+    Args:
+        name: 短名（如"乾"）或全名（如"乾为天"）
+
+    Returns:
+        全名，或None如果无法解析
+    """
+    # 先尝试直接匹配全名
+    try:
+        HexagramEngine.get_by_name(name)
+        return name
+    except (ValueError, IndexError):
+        pass
+
+    # 尝试短名映射
+    full_name = _SHORT_TO_FULL_NAME.get(name)
+    if full_name:
+        try:
+            HexagramEngine.get_by_name(full_name)
+            return full_name
+        except (ValueError, IndexError):
+            pass
+
+    return None
+
+
+def _generate_hexagram_data(hexagram_name: str) -> dict | None:
+    """根据卦名生成完整的卦象数据
+
+    当用户未提供hexagram_data但提到卦名时，自动排盘。
+    """
+    try:
+        # 解析短名为全名
+        full_name = _resolve_hexagram_name(hexagram_name)
+        if not full_name:
+            logger.warning(f"Cannot resolve hexagram name: {hexagram_name}")
+            return None
+
+        hexagram = HexagramEngine.get_by_name(full_name)
+
+        # 构建爻数据
+        lines_data = []
+        for line in hexagram.lines:
+            lines_data.append({
+                "position": line.position,
+                "yin_yang": line.yin_yang.value,
+                "is_moving": line.is_moving,
+                "element": line.element.value if line.element else None,
+                "six_relation": line.six_relation.value if line.six_relation else None,
+                "six_spirit": line.six_spirit.value if line.six_spirit else None,
+                "gan_zhi": line.gan_zhi,
+                "is_shi": line.is_shi,
+                "is_ying": line.is_ying,
+            })
+
+        # 获取卦辞
+        judgment = ""
+        image = ""
+        try:
+            from foundation.reference_data import ReferenceData
+            line_texts = ReferenceData.load_line_texts()
+            hex_key = hexagram_name.replace("为", "").replace("卦", "")
+            for key in [hexagram_name, hex_key]:
+                if key in line_texts:
+                    judgment = line_texts[key].get("judgment", "")
+                    image = line_texts[key].get("image", "")
+                    break
+        except Exception:
+            pass
+
+        # 获取上卦下卦名
+        upper = hexagram.lines[4].element.value if len(hexagram.lines) > 4 and hexagram.lines[4].element else ""
+        lower = hexagram.lines[1].element.value if len(hexagram.lines) > 1 and hexagram.lines[1].element else ""
+
+        return {
+            "name": full_name,
+            "upper_trigram": upper,
+            "lower_trigram": lower,
+            "judgment": judgment,
+            "image": image,
+            "lines": lines_data,
+            "is_changed": hexagram.is_changed if hasattr(hexagram, "is_changed") else False,
+        }
+    except Exception as e:
+        logger.warning(f"Failed to generate hexagram data for '{hexagram_name}': {e}")
+        return None
+
+
 def _rule_analyze(state: AgentState) -> dict:
     """规则分析节点
 
     调用规则引擎进行确定性分析。
+    如果没有hexagram_data但从用户查询中识别到卦名，自动生成卦象数据。
     """
     hexagram_data = state.get("hexagram_data")
+
+    # 如果没有卦象数据，尝试从意图分类结果中获取卦名并自动生成
+    if not hexagram_data:
+        entities = state.get("entities", {})
+        hexagram_name = entities.get("hexagram_name", "")
+        if hexagram_name:
+            hexagram_data = _generate_hexagram_data(hexagram_name)
+            if hexagram_data:
+                state["hexagram_data"] = hexagram_data
+                logger.info(f"Auto-generated hexagram data for: {hexagram_name}")
+
     if not hexagram_data:
         return {"rule_analysis": None, "rule_analysis_result": None}
 
@@ -321,8 +444,22 @@ def _rule_analyze(state: AgentState) -> dict:
         try:
             from rule_engine.analyzer import Analyzer
             month_branch = state.get("month_branch", "子")
-            hexagram = HexagramEngine.get_by_name(hexagram_name)
+            resolved_name = _resolve_hexagram_name(hexagram_name) or hexagram_name
+            hexagram = HexagramEngine.get_by_name(resolved_name)
             rule_analysis_result = Analyzer.analyze(hexagram, "通用", month_branch)
+            # 如果没有预计算的分析结果，用真实分析填充
+            if not rule_analysis_dict and rule_analysis_result:
+                rule_analysis_dict = {
+                    "yong_shen": rule_analysis_result.yong_shen.value,
+                    "prosperity": rule_analysis_result.prosperity.value,
+                    "verdict": {
+                        "overall": rule_analysis_result.verdict.overall,
+                        "strength": rule_analysis_result.verdict.strength,
+                        "trend": rule_analysis_result.verdict.trend,
+                        "confidence": rule_analysis_result.verdict.confidence,
+                    },
+                    "relationships": list(rule_analysis_result.relationships),
+                }
         except Exception as e:
             logger.warning(f"Real rule analysis failed, using dict only: {e}")
 
@@ -431,10 +568,17 @@ async def _interpret(state: AgentState) -> dict:
     rag_context = state.get("rag_context")
     rule_analysis = state.get("rule_analysis")
 
-    # 如果没有卦象数据，返回降级解释
+    # 如果没有卦象数据，返回引导性回复
     if not hexagram_data:
         return {
-            "interpretation_draft": "抱歉，未能获取到卦象数据，无法生成解释。",
+            "interpretation_draft": (
+                "您好！请提供具体的卦象信息，我才能为您解卦。\n\n"
+                "您可以：\n"
+                "1. 直接告诉我卦名，如「乾卦初爻动，事业方面如何？」\n"
+                "2. 先在「占卜」页面起卦，再来找我分析\n"
+                "3. 告诉我您的问题，我来帮您起卦\n\n"
+                "例如：「水雷屯卦，感情方面怎样？」"
+            ),
             "current_step": "interpret_complete",
         }
 
